@@ -22,7 +22,7 @@ class ScheduleItem {
     String? title,
     TimeOfDay? time,
     int? durationMinutes,
-    List<int> repeatDays,
+    List<int>? repeatDays,
     bool? isEnabled,
   }) {
     return ScheduleItem(
