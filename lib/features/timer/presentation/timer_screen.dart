@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
@@ -95,7 +96,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
             children: [
               _buildStatusBadge(timerState),
               const Spacer(),
-              _buildChronometerDial(timerState),
+              _buildChronometerTextBar(timerState),
               const Spacer(),
               if (timerState.penaltyMessage != null) ...[
                 _buildInterruptionAlert(timerState),
@@ -167,64 +168,79 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     );
   }
 
-  Widget _buildChronometerDial(TimerState state) {
-    // Second dial progress (cycles 0.0 -> 1.0 each minute)
-    final double secondProgress = state.status == TimerStatus.running
-        ? ((state.elapsedSeconds % 60) + 1) / 60.0
-        : (state.status == TimerStatus.completed ? 1.0 : 0.0);
+  Widget _buildChronometerTextBar(TimerState state) {
+    final Color accentColor = switch (state.status) {
+      TimerStatus.running => const Color(0xFF10B981),
+      TimerStatus.verifying => const Color(0xFFF59E0B),
+      TimerStatus.completed => const Color(0xFF6366F1),
+      TimerStatus.idle => const Color(0xFF64748B),
+    };
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        SizedBox(
-          width: 260,
-          height: 260,
-          child: CircularProgressIndicator(
-            value: secondProgress,
-            strokeWidth: 10,
-            backgroundColor: const Color(0xFF1E293B),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              state.status == TimerStatus.running
-                  ? const Color(0xFF10B981)
-                  : (state.status == TimerStatus.completed
-                      ? const Color(0xFF6366F1)
-                      : const Color(0xFF334155)),
-            ),
-            strokeCap: StrokeCap.round,
+    // Standard text bar container for the chronometer display.
+    // Structured cleanly so animations can easily wrap or interpolate this widget later.
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
-        ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              state.formattedElapsed,
-              style: const TextStyle(
-                fontSize: 50,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 2,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            state.formattedElapsed,
+            style: const TextStyle(
+              fontSize: 54,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 2,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
-            const SizedBox(height: 6),
-            Text(
-              state.status == TimerStatus.running
-                  ? 'TRACKING TIME'
-                  : (state.status == TimerStatus.completed
-                      ? 'COMPLETED'
-                      : 'STANDBY'),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: state.status == TimerStatus.running
-                    ? const Color(0xFF10B981)
-                    : Colors.white.withValues(alpha: 0.5),
-                letterSpacing: 1.5,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accentColor,
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
+              const SizedBox(width: 8),
+              Text(
+                state.status == TimerStatus.running
+                    ? 'TRACKING TIME'
+                    : (state.status == TimerStatus.completed
+                        ? 'COMPLETED'
+                        : (state.status == TimerStatus.verifying
+                            ? 'VERIFICATION PENDING'
+                            : 'STANDBY')),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: accentColor,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
