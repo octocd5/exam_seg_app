@@ -79,7 +79,7 @@ class SchedulesScreen extends ConsumerWidget {
                     ? _buildEmptyState(context, ref)
                     : ListView.separated(
                         itemCount: state.schedules.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final schedule = state.schedules[index];
                           return _ScheduleCard(
@@ -263,7 +263,7 @@ class _ScheduleCard extends StatelessWidget {
           ),
           Switch(
             value: schedule.isEnabled,
-            activeColor: const Color(0xFF10B981),
+            activeThumbColor: const Color(0xFF10B981),
             activeTrackColor: const Color(0xFF10B981).withValues(alpha: 0.3),
             inactiveThumbColor: Colors.grey,
             inactiveTrackColor: const Color(0xFF334155),

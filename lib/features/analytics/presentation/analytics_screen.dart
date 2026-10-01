@@ -252,7 +252,7 @@ class AnalyticsScreen extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: recentSessions.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final session = recentSessions[index];
             final strikes = session['strikes'] as int;

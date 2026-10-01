@@ -1,6 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
 import '../../verification/presentation/camera_verification_screen.dart';
 import '../controllers/timer_controller.dart';
@@ -13,16 +13,20 @@ class TimerScreen extends ConsumerStatefulWidget {
 }
 
 class _TimerScreenState extends ConsumerState<TimerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  late final AnimationController _lottieController;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _lottieController = AnimationController(vsync: this);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _lottieController.dispose();
     super.dispose();
   }
 
@@ -31,6 +35,14 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       ref.read(timerControllerProvider.notifier).onAppInterrupted();
+      _lottieController.stop();
+    } else if (state == AppLifecycleState.resumed) {
+      final currentStatus = ref.read(timerControllerProvider).status;
+      final isActive = currentStatus == TimerStatus.running ||
+          currentStatus == TimerStatus.verifying;
+      if (!isActive && _lottieController.duration != null) {
+        _lottieController.repeat();
+      }
     }
   }
 
@@ -70,6 +82,23 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Listen for timer status changes to control Lottie animation playback
+    ref.listen<TimerState>(timerControllerProvider, (previous, next) {
+      final wasActive = previous != null &&
+          (previous.status == TimerStatus.running ||
+              previous.status == TimerStatus.verifying);
+      final isActive = next.status == TimerStatus.running ||
+          next.status == TimerStatus.verifying;
+
+      if (isActive && !wasActive) {
+        _lottieController.stop();
+      } else if (!isActive && wasActive) {
+        if (_lottieController.duration != null) {
+          _lottieController.repeat();
+        }
+      }
+    });
+
     final timerState = ref.watch(timerControllerProvider);
 
     return Scaffold(
@@ -95,9 +124,11 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           child: Column(
             children: [
               _buildStatusBadge(timerState),
-              const Spacer(),
-              _buildChronometerTextBar(timerState),
-              const Spacer(),
+              const SizedBox(height: 12),
+              Expanded(
+                child: _buildMiddleSection(timerState),
+              ),
+              const SizedBox(height: 12),
               if (timerState.penaltyMessage != null) ...[
                 _buildInterruptionAlert(timerState),
                 const SizedBox(height: 16),
@@ -168,50 +199,98 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     );
   }
 
-  Widget _buildChronometerTextBar(TimerState state) {
+  Widget _buildMiddleSection(TimerState state) {
     final Color accentColor = switch (state.status) {
       TimerStatus.running => const Color(0xFF10B981),
       TimerStatus.verifying => const Color(0xFFF59E0B),
       TimerStatus.completed => const Color(0xFF6366F1),
-      TimerStatus.idle => const Color(0xFF64748B),
+      TimerStatus.idle => const Color(0xFF818CF8),
     };
 
-    // Standard text bar container for the chronometer display.
-    // Structured cleanly so animations can easily wrap or interpolate this widget later.
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: accentColor.withValues(alpha: 0.35),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+    final bool isTimerActive = state.status == TimerStatus.running ||
+        state.status == TimerStatus.verifying;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Lottie Burbuja character with atmospheric glow
+        Flexible(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final double maxSize = constraints.maxHeight.clamp(140.0, 260.0);
+              return Center(
+                child: SizedBox(
+                  width: maxSize,
+                  height: maxSize,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: maxSize,
+                        height: maxSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              (isTimerActive
+                                      ? accentColor
+                                      : const Color(0xFF8B5CF6))
+                                  .withValues(alpha: 0.18),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.35, 1.0],
+                          ),
+                        ),
+                      ),
+                      Lottie.asset(
+                        'assets/animations/Burbuja.json',
+                        controller: _lottieController,
+                        fit: BoxFit.contain,
+                        onLoaded: (composition) {
+                          _lottieController.duration = composition.duration;
+                          final currentStatus =
+                              ref.read(timerControllerProvider).status;
+                          final isActive =
+                              currentStatus == TimerStatus.running ||
+                                  currentStatus == TimerStatus.verifying;
+                          if (!isActive) {
+                            _lottieController.repeat();
+                          } else {
+                            _lottieController.stop();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            state.formattedElapsed,
-            style: const TextStyle(
-              fontSize: 54,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 2,
-              fontFeatures: [FontFeature.tabularFigures()],
+        ),
+        const SizedBox(height: 12),
+        // Chronometer text bar
+        Text(
+          state.formattedElapsed,
+          style: const TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: 2,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: accentColor.withValues(alpha: 0.35),
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 8,
@@ -219,6 +298,12 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: accentColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: accentColor.withValues(alpha: 0.6),
+                      blurRadius: 6,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
@@ -231,7 +316,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                             ? 'VERIFICATION PENDING'
                             : 'STANDBY')),
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: accentColor,
                   letterSpacing: 1.5,
@@ -239,8 +324,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

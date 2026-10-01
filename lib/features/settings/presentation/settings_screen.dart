@@ -172,7 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(color: Color(0xFF334155), height: 1),
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                activeColor: const Color(0xFF10B981),
+                activeThumbColor: const Color(0xFF10B981),
                 title: const Text(
                   'Strict Lock Mode',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
@@ -187,7 +187,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(color: Color(0xFF334155), height: 1),
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                activeColor: const Color(0xFF10B981),
+                activeThumbColor: const Color(0xFF10B981),
                 title: const Text(
                   'Background Strike Penalty',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
@@ -269,7 +269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSettingsCard([
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                activeColor: const Color(0xFF10B981),
+                activeThumbColor: const Color(0xFF10B981),
                 title: const Text(
                   'Audio Cues',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
@@ -284,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(color: Color(0xFF334155), height: 1),
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                activeColor: const Color(0xFF10B981),
+                activeThumbColor: const Color(0xFF10B981),
                 title: const Text(
                   'Haptic Vibration',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
@@ -336,12 +336,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSettingsCard(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+    return Material(
+      color: const Color(0xFF1E293B),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
+        side: const BorderSide(color: Color(0xFF334155)),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(children: children),
     );
   }
