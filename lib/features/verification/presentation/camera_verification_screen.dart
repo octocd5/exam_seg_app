@@ -181,7 +181,6 @@ class _CameraVerificationScreenState
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Object Verification'),
         backgroundColor: Colors.black,
         elevation: 0,
       ),

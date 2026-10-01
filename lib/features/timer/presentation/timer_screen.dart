@@ -1,9 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
+import '../../activity/controllers/activity_controller.dart';
+import '../../activity/models/activity_session.dart';
 import '../../verification/presentation/camera_verification_screen.dart';
 import '../controllers/timer_controller.dart';
+
+// ============================================================================
+// 🎨 [STATE BACKGROUND COLORS CONFIGURATION]
+// Change the background colors for the 2 app states in:
+// 👉 lib/core/constants/app_colors.dart
+//
+// 1. STANDBY STATE: kTimerStandbyBackgroundColor
+// 2. ACTIVE STATE:  kTimerActiveBackgroundColor
+// ============================================================================
 
 class TimerScreen extends ConsumerStatefulWidget {
   const TimerScreen({super.key});
@@ -100,46 +112,55 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     });
 
     final timerState = ref.watch(timerControllerProvider);
+    final isTimerActive = timerState.status == TimerStatus.running ||
+        timerState.status == TimerStatus.verifying;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        title: const Text(
-          'Focus Chronometer',
-          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+    // 🎨 Switch background color based on the 2 states:
+    final Color currentBackgroundColor = isTimerActive
+        ? kTimerActiveBackgroundColor
+        : kTimerStandbyBackgroundColor;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      color: currentBackgroundColor,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          // Screen title removed as requested
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            IconButton(
+              tooltip: 'Request Lock Permissions',
+              icon: const Icon(Icons.shield_outlined),
+              onPressed: _requestBlockerPermissions,
+            ),
+          ],
         ),
-        backgroundColor: const Color(0xFF0F172A),
-        elevation: 0,
-        actions: [
-          IconButton(
-            tooltip: 'Request Lock Permissions',
-            icon: const Icon(Icons.shield_outlined),
-            onPressed: _requestBlockerPermissions,
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            children: [
-              _buildStatusBadge(timerState),
-              const SizedBox(height: 12),
-              Expanded(
-                child: _buildMiddleSection(timerState),
-              ),
-              const SizedBox(height: 12),
-              if (timerState.penaltyMessage != null) ...[
-                _buildInterruptionAlert(timerState),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              children: [
+                _buildStatusBadge(timerState),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: _buildMiddleSection(timerState),
+                ),
+                const SizedBox(height: 12),
+                if (timerState.penaltyMessage != null) ...[
+                  _buildInterruptionAlert(timerState),
+                  const SizedBox(height: 16),
+                ],
+                if (timerState.status == TimerStatus.completed) ...[
+                  _buildSessionSummaryCard(timerState),
+                  const SizedBox(height: 20),
+                ],
+                _buildActionButtons(timerState),
                 const SizedBox(height: 16),
               ],
-              if (timerState.status == TimerStatus.completed) ...[
-                _buildSessionSummaryCard(timerState),
-                const SizedBox(height: 20),
-              ],
-              _buildActionButtons(timerState),
-              const SizedBox(height: 16),
-            ],
+            ),
           ),
         ),
       ),
@@ -210,6 +231,21 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     final bool isTimerActive = state.status == TimerStatus.running ||
         state.status == TimerStatus.verifying;
 
+    // Retrieve today's total focus time from the activity controller
+    final activityState = ref.watch(activityControllerProvider);
+    final dailyGroups = groupSessionsByDay(sessions: activityState.sessions);
+    final todayGroup = dailyGroups.firstWhere(
+      (g) => g.isToday,
+      orElse: () => DailyActivityGroup(
+        date: DateTime.now(),
+        sessions: const [],
+        totalSeconds: 0,
+        totalStrikes: 0,
+      ),
+    );
+    final String todayTime = todayGroup.formattedTotalDuration;
+    final int todaySessionsCount = todayGroup.sessions.length;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -267,59 +303,143 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
             },
           ),
         ),
-        const SizedBox(height: 12),
-        // Chronometer text bar
-        Text(
-          state.formattedElapsed,
-          style: const TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 2,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: accentColor.withValues(alpha: 0.35),
+        const SizedBox(height: 14),
+
+        // ⏱️ TIMER DISPLAY LOGIC:
+        // - When ACTIVE: The actual counting chronometer is visible.
+        // - When STANDBY: The actual timer is hidden. Instead, a bubble shows the time
+        //   called from the activity screen that the user has used the timer for in the day.
+        if (isTimerActive) ...[
+          Text(
+            state.formattedElapsed,
+            style: const TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 2,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
-          child: Row(
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: accentColor.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: accentColor,
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentColor.withValues(alpha: 0.6),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  state.status == TimerStatus.running
+                      ? 'TRACKING TIME'
+                      : 'VERIFICATION PENDING',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: accentColor,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          // Standby Bubble: calls time from the activity screen used today
+          _buildStandbyActivityBubble(todayTime, todaySessionsCount),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStandbyActivityBubble(String todayTime, int sessionCount) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Little arrow/pointer pointing up to Burbuja
+        CustomPaint(
+          size: const Size(16, 8),
+          painter: _BubbleTailPainter(
+            color: const Color(0xFF1E293B).withValues(alpha: 0.95),
+            borderColor: const Color(0xFF10B981).withValues(alpha: 0.4),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B).withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: const Color(0xFF10B981).withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: accentColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: accentColor.withValues(alpha: 0.6),
-                      blurRadius: 6,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.access_time_rounded,
+                    color: Color(0xFF10B981),
+                    size: 15,
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    "TODAY'S FOCUS TIME",
+                    style: TextStyle(
+                      color: Color(0xFF34D399),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                todayTime,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 2),
               Text(
-                state.status == TimerStatus.running
-                    ? 'TRACKING TIME'
-                    : (state.status == TimerStatus.completed
-                        ? 'COMPLETED'
-                        : (state.status == TimerStatus.verifying
-                            ? 'VERIFICATION PENDING'
-                            : 'STANDBY')),
+                sessionCount == 0
+                    ? '0 sessions logged today'
+                    : '$sessionCount session${sessionCount == 1 ? '' : 's'} logged today',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: accentColor,
-                  letterSpacing: 1.5,
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 11,
                 ),
               ),
             ],
@@ -348,7 +468,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
               style: const TextStyle(
                 color: Colors.redAccent,
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -359,50 +479,75 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
   Widget _buildSessionSummaryCard(TimerState state) {
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.4)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          Column(
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Total Time',
-                  style: TextStyle(color: Colors.white60, fontSize: 13)),
-              const SizedBox(height: 4),
+              Icon(Icons.stars_rounded, color: Color(0xFF6366F1), size: 20),
+              SizedBox(width: 8),
               Text(
-                state.summaryFormatted,
-                style: const TextStyle(
+                'Focus Session Completed!',
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  fontSize: 15,
                 ),
               ),
             ],
           ),
-          Container(
-            height: 36,
-            width: 1,
-            color: Colors.white24,
-          ),
-          Column(
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              const Text('Strikes / Exits',
-                  style: TextStyle(color: Colors.white60, fontSize: 13)),
-              const SizedBox(height: 4),
-              Text(
-                '${state.interruptionCount}',
-                style: TextStyle(
-                  color: state.interruptionCount == 0
-                      ? const Color(0xFF10B981)
-                      : Colors.orangeAccent,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+              Column(
+                children: [
+                  Text(
+                    'Time Logged',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    state.summaryFormatted,
+                    style: const TextStyle(
+                      color: Color(0xFF10B981),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              Container(width: 1, height: 30, color: const Color(0xFF334155)),
+              Column(
+                children: [
+                  Text(
+                    'Discipline Strikes',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${state.interruptionCount}',
+                    style: TextStyle(
+                      color: state.interruptionCount == 0
+                          ? const Color(0xFF10B981)
+                          : Colors.orangeAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -415,72 +560,47 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     final notifier = ref.read(timerControllerProvider.notifier);
 
     if (state.status == TimerStatus.idle) {
-      return Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 4,
-              ),
-              onPressed: () => notifier.startTimer(),
-              icon: const Icon(Icons.play_arrow_rounded, size: 26),
-              label: const Text(
-                'Start Chronometer',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+      return SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF10B981),
+            foregroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
+            elevation: 4,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'The only way to stop is by photographing a random object',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
-            textAlign: TextAlign.center,
+          onPressed: () => notifier.startTimer(),
+          icon: const Icon(Icons.play_arrow_rounded, size: 26),
+          label: const Text(
+            'Start Chronometer',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-        ],
+        ),
       );
     }
 
     if (state.status == TimerStatus.running) {
-      return Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFEF4444),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: _handleStopRequest,
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text(
-                'Stop (Scan Object to Unlock)',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
+      return SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'App will assign a random item to photograph',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
+          onPressed: _handleStopRequest,
+          icon: const Icon(Icons.camera_alt_outlined),
+          label: const Text(
+            'Stop (Scan Object to Unlock)',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
-        ],
+        ),
       );
     }
 
@@ -537,4 +657,35 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       ),
     );
   }
+}
+
+class _BubbleTailPainter extends CustomPainter {
+  final Color color;
+  final Color borderColor;
+
+  _BubbleTailPainter({required this.color, required this.borderColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawLine(Offset(0, size.height), Offset(size.width / 2, 0), borderPaint);
+    canvas.drawLine(Offset(size.width / 2, 0), Offset(size.width, size.height), borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

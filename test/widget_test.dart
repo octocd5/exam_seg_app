@@ -10,8 +10,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Focus Chronometer'), findsOneWidget);
+    // Title is removed from AppBar; verify Start button and standby focus bubble
     expect(find.text('Start Chronometer'), findsOneWidget);
-    expect(find.text('00:00'), findsOneWidget);
+    expect(find.text("TODAY'S FOCUS TIME"), findsOneWidget);
   });
 }

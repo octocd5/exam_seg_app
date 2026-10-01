@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/verifiable_objects.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
+import '../../activity/controllers/activity_controller.dart';
 
 enum TimerStatus {
   idle,
@@ -14,6 +15,7 @@ enum TimerStatus {
 class TimerState {
   final TimerStatus status;
   final int elapsedSeconds;
+  final DateTime? startTime;
   final String? targetObject;
   final int interruptionCount;
   final String? penaltyMessage;
@@ -21,6 +23,7 @@ class TimerState {
   const TimerState({
     this.status = TimerStatus.idle,
     this.elapsedSeconds = 0,
+    this.startTime,
     this.targetObject,
     this.interruptionCount = 0,
     this.penaltyMessage,
@@ -54,6 +57,8 @@ class TimerState {
   TimerState copyWith({
     TimerStatus? status,
     int? elapsedSeconds,
+    DateTime? startTime,
+    bool clearStartTime = false,
     String? targetObject,
     bool clearTargetObject = false,
     int? interruptionCount,
@@ -63,6 +68,7 @@ class TimerState {
     return TimerState(
       status: status ?? this.status,
       elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
+      startTime: clearStartTime ? null : (startTime ?? this.startTime),
       targetObject: clearTargetObject ? null : (targetObject ?? this.targetObject),
       interruptionCount: interruptionCount ?? this.interruptionCount,
       penaltyMessage: clearPenalty ? null : (penaltyMessage ?? this.penaltyMessage),
@@ -71,10 +77,11 @@ class TimerState {
 }
 
 class TimerController extends StateNotifier<TimerState> {
+  final Ref? _ref;
   Timer? _ticker;
   final Random _random = Random();
 
-  TimerController() : super(const TimerState());
+  TimerController([this._ref]) : super(const TimerState());
 
   Future<void> startTimer() async {
     if (state.status == TimerStatus.running) return;
@@ -89,6 +96,7 @@ class TimerController extends StateNotifier<TimerState> {
     state = state.copyWith(
       status: TimerStatus.running,
       elapsedSeconds: 0,
+      startTime: DateTime.now(),
       clearTargetObject: true,
       clearPenalty: true,
     );
@@ -128,6 +136,24 @@ class TimerController extends StateNotifier<TimerState> {
       // Ignored if platform doesn't support
     }
 
+    final duration = state.elapsedSeconds;
+    final object = state.targetObject;
+    final strikes = state.interruptionCount;
+    final start = state.startTime ??
+        DateTime.now().subtract(Duration(seconds: duration));
+    final end = DateTime.now();
+
+    // Persist to ActivityController if Ref is available and duration > 0
+    if (_ref != null && duration > 0) {
+      _ref.read(activityControllerProvider.notifier).recordSession(
+            startTime: start,
+            endTime: end,
+            durationSeconds: duration,
+            targetObject: object,
+            strikes: strikes,
+          );
+    }
+
     state = state.copyWith(
       status: TimerStatus.completed,
       clearTargetObject: true,
@@ -161,5 +187,6 @@ class TimerController extends StateNotifier<TimerState> {
 
 final timerControllerProvider =
     StateNotifierProvider<TimerController, TimerState>((ref) {
-  return TimerController();
+  return TimerController(ref);
 });
+
