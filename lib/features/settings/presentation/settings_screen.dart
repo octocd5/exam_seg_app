@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/verifiable_objects.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
+import '../../timer/controllers/timer_controller.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _strictLockMode = true;
-  bool _strikeOnBackground = true;
   bool _soundEnabled = true;
   bool _hapticEnabled = true;
   double _confidenceThreshold = 0.65;
@@ -41,16 +43,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           granted
               ? 'Lock permissions granted and active!'
               : 'Permission not granted. Please allow in Android system settings.',
+          style: TextStyle(
+            color: granted ? kTimerStandbyButtonTextColor : Colors.white,
+          ),
         ),
-        backgroundColor: granted ? const Color(0xFF10B981) : Colors.orange[800],
+        backgroundColor: granted ? kTimerStandbyButtonColor : Colors.orange[800],
       ),
     );
   }
 
-  void _showObjectsCatalog() {
+  void _showObjectsCatalog(AppThemeColors colors) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: colors.cardBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -64,24 +69,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Verifiable Target Objects',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: colors.text,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white70),
+                    icon: Icon(Icons.close, color: colors.textSecondary),
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'When you want to stop a session, Focus Guard randomly assigns one of these real-world items for you to photograph:',
-                style: TextStyle(color: Colors.white60, fontSize: 13),
+                style: TextStyle(color: colors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -89,12 +94,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 runSpacing: 8,
                 children: targetObjects.map((obj) {
                   return Chip(
-                    backgroundColor: const Color(0xFF0F172A),
-                    side: const BorderSide(color: Color(0xFF334155)),
-                    avatar: const Icon(Icons.check_circle, size: 16, color: Color(0xFF10B981)),
+                    backgroundColor: colors.background,
+                    side: BorderSide(color: colors.cardBorder),
+                    avatar: Icon(Icons.check_circle, size: 16, color: colors.accent),
                     label: Text(
                       obj,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      style: TextStyle(color: colors.text, fontSize: 12),
                     ),
                   );
                 }).toList(),
@@ -109,25 +114,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final timerState = ref.watch(timerControllerProvider);
+    final isTimerActive = timerState.status == TimerStatus.running;
+    final colors = AppThemeColors(isTimerActive);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: colors.background,
         elevation: 0,
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           children: [
-            _buildSectionHeader('LOCK & ANTI-CHEATING'),
-            _buildSettingsCard([
+            _buildSectionHeader('LOCK & ANTI-CHEATING', colors),
+            _buildSettingsCard(colors, [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: (_permissionsActive == true
-                            ? const Color(0xFF10B981)
+                            ? colors.accent
                             : Colors.orange)
                         .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
@@ -137,20 +146,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? Icons.shield_rounded
                         : Icons.shield_outlined,
                     color: _permissionsActive == true
-                        ? const Color(0xFF10B981)
+                        ? colors.accent
                         : Colors.orange,
                   ),
                 ),
-                title: const Text(
+                title: Text(
                   'Lock Screen Permissions',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   _permissionsActive == true
                       ? 'System overlay & lock permissions active'
                       : 'Permissions required for full lockdown',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: colors.textSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -158,69 +167,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _requestPermissions,
                   child: Text(
                     _permissionsActive == true ? 'Check' : 'Grant',
-                    style: const TextStyle(
-                      color: Color(0xFF10B981),
+                    style: TextStyle(
+                      color: colors.accent,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-              const Divider(color: Color(0xFF334155), height: 1),
+              Divider(color: colors.cardBorder, height: 1),
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                activeThumbColor: const Color(0xFF10B981),
-                title: const Text(
+                activeThumbColor: colors.accent,
+                activeTrackColor: colors.accent.withValues(alpha: 0.4),
+                title: Text(
                   'Strict Lock Mode',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   'Block home button and app switcher during active sessions',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 value: _strictLockMode,
                 onChanged: (val) => setState(() => _strictLockMode = val),
               ),
-              const Divider(color: Color(0xFF334155), height: 1),
-              SwitchListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                activeThumbColor: const Color(0xFF10B981),
-                title: const Text(
-                  'Background Strike Penalty',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  'Record a strike warning whenever the app is exited or backgrounded',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
-                ),
-                value: _strikeOnBackground,
-                onChanged: (val) => setState(() => _strikeOnBackground = val),
-              ),
             ]),
             const SizedBox(height: 24),
-            _buildSectionHeader('CAMERA & VISION VERIFICATION'),
-            _buildSettingsCard([
+            _buildSectionHeader('CAMERA & VISION VERIFICATION', colors),
+            _buildSettingsCard(colors, [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                    color: colors.accent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.qr_code_scanner, color: Color(0xFF6366F1)),
+                  child: Icon(Icons.qr_code_scanner, color: colors.accent),
                 ),
-                title: const Text(
+                title: Text(
                   'Recognizable Objects',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   '${targetObjects.length} everyday items configured for photo unlock',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
-                trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                onTap: _showObjectsCatalog,
+                trailing: Icon(Icons.chevron_right, color: colors.textMuted),
+                onTap: () => _showObjectsCatalog(colors),
               ),
-              const Divider(color: Color(0xFF334155), height: 1),
+              Divider(color: colors.cardBorder, height: 1),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Column(
@@ -229,14 +224,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'AI Confidence Threshold',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                          style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                         ),
                         Text(
                           '${(_confidenceThreshold * 100).toInt()}%',
-                          style: const TextStyle(
-                            color: Color(0xFF10B981),
+                          style: TextStyle(
+                            color: colors.accent,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -245,15 +240,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 2),
                     Text(
                       'Higher values require clearer, closer photos of the target object',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 12),
                     ),
                     Slider(
                       value: _confidenceThreshold,
                       min: 0.5,
                       max: 0.9,
                       divisions: 8,
-                      activeColor: const Color(0xFF10B981),
-                      inactiveColor: const Color(0xFF334155),
+                      activeColor: colors.accent,
+                      inactiveColor: colors.cardBorder,
                       onChanged: (val) => setState(() => _confidenceThreshold = val),
                     ),
                   ],
@@ -261,51 +256,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ]),
             const SizedBox(height: 24),
-            _buildSectionHeader('SOUNDS & FEEDBACK'),
-            _buildSettingsCard([
+            _buildSectionHeader('SOUNDS & FEEDBACK', colors),
+            _buildSettingsCard(colors, [
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                activeThumbColor: const Color(0xFF10B981),
-                title: const Text(
+                activeThumbColor: colors.accent,
+                activeTrackColor: colors.accent.withValues(alpha: 0.4),
+                title: Text(
                   'Audio Cues',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  'Play chime on session start, strike warning, and unlock',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  'Play chime on session start and unlock',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 value: _soundEnabled,
                 onChanged: (val) => setState(() => _soundEnabled = val),
               ),
-              const Divider(color: Color(0xFF334155), height: 1),
+              Divider(color: colors.cardBorder, height: 1),
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                activeThumbColor: const Color(0xFF10B981),
-                title: const Text(
+                activeThumbColor: colors.accent,
+                activeTrackColor: colors.accent.withValues(alpha: 0.4),
+                title: Text(
                   'Haptic Vibration',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   'Vibrate on camera object detection confirmation',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 value: _hapticEnabled,
                 onChanged: (val) => setState(() => _hapticEnabled = val),
               ),
             ]),
             const SizedBox(height: 24),
-            _buildSectionHeader('ABOUT'),
-            _buildSettingsCard([
-              const ListTile(
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                leading: Icon(Icons.info_outline, color: Colors.white60),
+            _buildSectionHeader('ABOUT', colors),
+            _buildSettingsCard(colors, [
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Icon(Icons.info_outline, color: colors.textSecondary),
                 title: Text(
                   'Focus Guard App',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   'Version 1.0.0 • On-Device ML Kit Vision',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
+                  style: TextStyle(color: colors.textMuted, fontSize: 12),
                 ),
               ),
             ]),
@@ -316,13 +313,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, AppThemeColors colors) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Color(0xFF94A3B8),
+        style: TextStyle(
+          color: colors.textSecondary,
           fontSize: 12,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
@@ -331,12 +328,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSettingsCard(List<Widget> children) {
+  Widget _buildSettingsCard(AppThemeColors colors, List<Widget> children) {
     return Material(
-      color: const Color(0xFF1E293B),
+      color: colors.cardBackground,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFF334155)),
+        side: BorderSide(color: colors.cardBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: children),

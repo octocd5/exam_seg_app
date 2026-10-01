@@ -6,6 +6,7 @@ import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../timer/controllers/timer_controller.dart';
 import '../controllers/vision_controller.dart';
+import '../../../core/constants/app_colors.dart';
 
 class CameraVerificationScreen extends ConsumerStatefulWidget {
   final String targetObject;
@@ -291,7 +292,7 @@ class _CameraVerificationScreenState
 
     if (!_isCameraInitialized || _cameraController == null) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF10B981)),
+        child: CircularProgressIndicator(color: kTimerStandbyButtonColor),
       );
     }
 
@@ -357,7 +358,7 @@ class _CameraVerificationScreenState
             const Icon(
               Icons.check_circle_outline,
               size: 80,
-              color: Color(0xFF10B981),
+              color: kTimerStandbyButtonColor,
             ),
             const SizedBox(height: 16),
             Text(
@@ -372,7 +373,7 @@ class _CameraVerificationScreenState
               const SizedBox(height: 6),
               Text(
                 'Confidence: ${((_lastResult!.confidence!) * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(color: Color(0xFF10B981), fontSize: 16),
+                style: const TextStyle(color: kTimerStandbyButtonColor, fontSize: 16),
               ),
             ],
             const SizedBox(height: 12),

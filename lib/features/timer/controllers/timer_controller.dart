@@ -150,27 +150,17 @@ class TimerController extends StateNotifier<TimerState> {
             endTime: end,
             durationSeconds: duration,
             targetObject: object,
-            strikes: strikes,
+            strikes: 0,
           );
     }
 
-    state = state.copyWith(
-      status: TimerStatus.completed,
-      clearTargetObject: true,
-    );
+    // Return to the same Standby state as in first boot
+    state = const TimerState();
   }
 
-  /// Invoked when the user leaves or backgrounds the app during an active session
+  /// App interrupted hook (strike logic removed)
   void onAppInterrupted() {
-    if (state.status == TimerStatus.running ||
-        state.status == TimerStatus.verifying) {
-      final newCount = state.interruptionCount + 1;
-      state = state.copyWith(
-        interruptionCount: newCount,
-        penaltyMessage:
-            'Warning: App was backgrounded! Strike #$newCount recorded.',
-      );
-    }
+    // Strike logic removed
   }
 
   void reset() {

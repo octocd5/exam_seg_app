@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../timer/controllers/timer_controller.dart';
 import '../controllers/schedules_controller.dart';
 import '../models/schedule_item.dart';
 
 class SchedulesScreen extends ConsumerWidget {
   const SchedulesScreen({super.key});
 
-  void _showAddScheduleSheet(BuildContext context, WidgetRef ref) {
+  void _showAddScheduleSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AppThemeColors colors,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: colors.cardBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => _AddScheduleModal(
+        colors: colors,
         onSave: (newSchedule) {
           ref.read(schedulesControllerProvider.notifier).addSchedule(newSchedule);
         },
@@ -24,19 +31,25 @@ class SchedulesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final timerState = ref.watch(timerControllerProvider);
+    final isTimerActive = timerState.status == TimerStatus.running ||
+        timerState.status == TimerStatus.verifying;
+    final colors = AppThemeColors(isTimerActive);
+
     final state = ref.watch(schedulesControllerProvider);
     final notifier = ref.read(schedulesControllerProvider.notifier);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: colors.background,
         elevation: 0,
+        iconTheme: IconThemeData(color: colors.text),
         actions: [
           IconButton(
             tooltip: 'Add Schedule',
-            icon: const Icon(Icons.add_circle_outline, color: Color(0xFF10B981), size: 28),
-            onPressed: () => _showAddScheduleSheet(context, ref),
+            icon: Icon(Icons.add_circle_outline, color: colors.accent, size: 28),
+            onPressed: () => _showAddScheduleSheet(context, ref, colors),
           ),
         ],
       ),
@@ -46,25 +59,25 @@ class SchedulesScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoBanner(),
+              _buildInfoBanner(colors),
               const SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Active Routines (${state.schedules.where((s) => s.isEnabled).length})',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: colors.text,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   TextButton.icon(
-                    onPressed: () => _showAddScheduleSheet(context, ref),
-                    icon: const Icon(Icons.add, size: 18, color: Color(0xFF10B981)),
-                    label: const Text(
+                    onPressed: () => _showAddScheduleSheet(context, ref, colors),
+                    icon: Icon(Icons.add, size: 18, color: colors.accent),
+                    label: Text(
                       'New Plan',
-                      style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                      style: TextStyle(color: colors.accent, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -72,7 +85,7 @@ class SchedulesScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               Expanded(
                 child: state.schedules.isEmpty
-                    ? _buildEmptyState(context, ref)
+                    ? _buildEmptyState(context, ref, colors)
                     : ListView.separated(
                         itemCount: state.schedules.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -80,6 +93,7 @@ class SchedulesScreen extends ConsumerWidget {
                           final schedule = state.schedules[index];
                           return _ScheduleCard(
                             schedule: schedule,
+                            colors: colors,
                             onToggle: () => notifier.toggleSchedule(schedule.id),
                             onDelete: () => notifier.deleteSchedule(schedule.id),
                           );
@@ -91,36 +105,36 @@ class SchedulesScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF10B981),
-        foregroundColor: Colors.black,
+        backgroundColor: colors.accent,
+        foregroundColor: colors.accentText,
         icon: const Icon(Icons.alarm_add_rounded),
         label: const Text(
           'Add Schedule',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        onPressed: () => _showAddScheduleSheet(context, ref),
+        onPressed: () => _showAddScheduleSheet(context, ref, colors),
       ),
     );
   }
 
-  Widget _buildInfoBanner() {
+  Widget _buildInfoBanner(AppThemeColors colors) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF10B981).withValues(alpha: 0.1),
+        color: colors.accent.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+        border: Border.all(color: colors.accent.withValues(alpha: 0.35)),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.schedule_send_rounded, color: Color(0xFF10B981), size: 24),
-          SizedBox(width: 12),
+          Icon(Icons.schedule_send_rounded, color: colors.accent, size: 24),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Scheduled sessions trigger automated focus locks & reminders so you never miss study time.',
               style: TextStyle(
-                color: Color(0xFFCBD5E1),
+                color: colors.textSecondary,
                 fontSize: 13,
                 height: 1.3,
               ),
@@ -131,31 +145,31 @@ class SchedulesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
+  Widget _buildEmptyState(BuildContext context, WidgetRef ref, AppThemeColors colors) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.event_busy_rounded, size: 64, color: Colors.white.withValues(alpha: 0.3)),
+          Icon(Icons.event_busy_rounded, size: 64, color: colors.textMuted),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'No Active Schedules',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(color: colors.text, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
           Text(
             'Create routines to automatically lock distractions during your planned focus hours.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-              foregroundColor: Colors.black,
+              backgroundColor: colors.accent,
+              foregroundColor: colors.accentText,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () => _showAddScheduleSheet(context, ref),
+            onPressed: () => _showAddScheduleSheet(context, ref, colors),
             icon: const Icon(Icons.add),
             label: const Text('Create First Schedule'),
           ),
@@ -167,11 +181,13 @@ class SchedulesScreen extends ConsumerWidget {
 
 class _ScheduleCard extends StatelessWidget {
   final ScheduleItem schedule;
+  final AppThemeColors colors;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
 
   const _ScheduleCard({
     required this.schedule,
+    required this.colors,
     required this.onToggle,
     required this.onDelete,
   });
@@ -180,12 +196,12 @@ class _ScheduleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: schedule.isEnabled
-              ? const Color(0xFF10B981).withValues(alpha: 0.35)
-              : const Color(0xFF334155),
+              ? colors.accent.withValues(alpha: 0.45)
+              : colors.cardBorder,
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -202,7 +218,7 @@ class _ScheduleCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: schedule.isEnabled ? Colors.white : Colors.white54,
+                        color: schedule.isEnabled ? colors.text : colors.textMuted,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -210,8 +226,8 @@ class _ScheduleCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: schedule.isEnabled
-                            ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                            : Colors.white.withValues(alpha: 0.05),
+                            ? colors.accent.withValues(alpha: 0.18)
+                            : colors.cardBorder.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -220,8 +236,8 @@ class _ScheduleCard extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: schedule.isEnabled
-                              ? const Color(0xFF10B981)
-                              : Colors.white54,
+                              ? colors.accent
+                              : colors.textSecondary,
                         ),
                       ),
                     ),
@@ -233,7 +249,7 @@ class _ScheduleCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: schedule.isEnabled ? Colors.white70 : Colors.white38,
+                    color: schedule.isEnabled ? colors.text : colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -242,14 +258,14 @@ class _ScheduleCard extends StatelessWidget {
                     Icon(
                       Icons.repeat_rounded,
                       size: 13,
-                      color: schedule.isEnabled ? const Color(0xFF64748B) : Colors.white24,
+                      color: colors.textMuted,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       schedule.daysSummary,
                       style: TextStyle(
                         fontSize: 12,
-                        color: schedule.isEnabled ? const Color(0xFF94A3B8) : Colors.white24,
+                        color: colors.textMuted,
                       ),
                     ),
                   ],
@@ -259,15 +275,15 @@ class _ScheduleCard extends StatelessWidget {
           ),
           Switch(
             value: schedule.isEnabled,
-            activeThumbColor: const Color(0xFF10B981),
-            activeTrackColor: const Color(0xFF10B981).withValues(alpha: 0.3),
-            inactiveThumbColor: Colors.grey,
-            inactiveTrackColor: const Color(0xFF334155),
+            activeThumbColor: colors.accent,
+            activeTrackColor: colors.accent.withValues(alpha: 0.35),
+            inactiveThumbColor: colors.cardBorder,
+            inactiveTrackColor: colors.cardBorder.withValues(alpha: 0.4),
             onChanged: (_) => onToggle(),
           ),
           IconButton(
             tooltip: 'Delete',
-            icon: const Icon(Icons.delete_outline, size: 20, color: Colors.white38),
+            icon: Icon(Icons.delete_outline, size: 20, color: colors.textMuted),
             onPressed: onDelete,
           ),
         ],
@@ -277,9 +293,13 @@ class _ScheduleCard extends StatelessWidget {
 }
 
 class _AddScheduleModal extends StatefulWidget {
+  final AppThemeColors colors;
   final ValueChanged<ScheduleItem> onSave;
 
-  const _AddScheduleModal({required this.onSave});
+  const _AddScheduleModal({
+    required this.colors,
+    required this.onSave,
+  });
 
   @override
   State<_AddScheduleModal> createState() => _AddScheduleModalState();
@@ -298,15 +318,20 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
   }
 
   Future<void> _pickTime() async {
+    final colors = widget.colors;
     final picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime,
       builder: (context, child) {
         return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF10B981),
-              surface: Color(0xFF1E293B),
+          data: ThemeData(
+            useMaterial3: true,
+            brightness: colors.isTimerActive ? Brightness.light : Brightness.dark,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: colors.accent,
+              brightness: colors.isTimerActive ? Brightness.light : Brightness.dark,
+              surface: colors.cardBackground,
+              primary: colors.accent,
             ),
           ),
           child: child!,
@@ -350,6 +375,7 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = widget.colors;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -367,16 +393,16 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'New Focus Schedule',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: colors.text,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.white60),
+                icon: Icon(Icons.close, color: colors.textSecondary),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ],
@@ -384,23 +410,23 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
           const SizedBox(height: 16),
           TextField(
             controller: _titleController,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: colors.text),
             decoration: InputDecoration(
               labelText: 'Session Title',
-              labelStyle: const TextStyle(color: Colors.white60),
+              labelStyle: TextStyle(color: colors.textSecondary),
               filled: true,
-              fillColor: const Color(0xFF0F172A),
+              fillColor: colors.background,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF334155)),
+                borderSide: BorderSide(color: colors.cardBorder),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF334155)),
+                borderSide: BorderSide(color: colors.cardBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF10B981)),
+                borderSide: BorderSide(color: colors.accent, width: 1.5),
               ),
             ),
           ),
@@ -414,9 +440,9 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
+                      color: colors.background,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF334155)),
+                      border: Border.all(color: colors.cardBorder),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -424,19 +450,22 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Start Time',
-                                style: TextStyle(color: Colors.white54, fontSize: 11)),
+                            Text(
+                              'Start Time',
+                              style: TextStyle(color: colors.textSecondary, fontSize: 11),
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               _selectedTime.format(context),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16),
+                              style: TextStyle(
+                                color: colors.text,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ],
                         ),
-                        const Icon(Icons.access_time_rounded, color: Color(0xFF10B981)),
+                        Icon(Icons.access_time_rounded, color: colors.accent),
                       ],
                     ),
                   ),
@@ -447,23 +476,28 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
+                    color: colors.background,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF334155)),
+                    border: Border.all(color: colors.cardBorder),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Duration',
-                          style: TextStyle(color: Colors.white54, fontSize: 11)),
+                      Text(
+                        'Duration',
+                        style: TextStyle(color: colors.textSecondary, fontSize: 11),
+                      ),
                       const SizedBox(height: 2),
                       DropdownButton<int>(
                         value: _selectedDuration,
-                        dropdownColor: const Color(0xFF1E293B),
+                        dropdownColor: colors.cardBackground,
                         underline: const SizedBox(),
                         isDense: true,
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          color: colors.text,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                         items: const [
                           DropdownMenuItem(value: 15, child: Text('15 min')),
                           DropdownMenuItem(value: 25, child: Text('25 min')),
@@ -483,7 +517,10 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text('Repeat Days', style: TextStyle(color: Colors.white70, fontSize: 13)),
+          Text(
+            'Repeat Days',
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
+          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -496,17 +533,17 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF10B981) : const Color(0xFF0F172A),
+                    color: isSelected ? colors.accent : colors.background,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? const Color(0xFF10B981) : const Color(0xFF334155),
+                      color: isSelected ? colors.accent : colors.cardBorder,
                     ),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     dayLabels[index],
                     style: TextStyle(
-                      color: isSelected ? Colors.black : Colors.white70,
+                      color: isSelected ? colors.accentText : colors.textSecondary,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -521,13 +558,15 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
             height: 50,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.black,
+                backgroundColor: colors.accent,
+                foregroundColor: colors.accentText,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: _save,
-              child: const Text('Save Schedule',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              child: const Text(
+                'Save Schedule',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
             ),
           ),
         ],

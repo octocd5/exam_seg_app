@@ -22,9 +22,9 @@ class FocusGuardApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        scaffoldBackgroundColor: const Color(0xFF1D1C1A),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF10B981),
+          seedColor: const Color(0xFFC4BDDD),
           brightness: Brightness.dark,
         ),
       ),

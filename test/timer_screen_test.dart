@@ -34,7 +34,8 @@ void main() {
     expect(find.text('00:00'), findsNothing);
     expect(find.text("TODAY'S FOCUS TIME"), findsOneWidget);
     expect(find.text('Start Chronometer'), findsOneWidget);
-    expect(find.text('Chronometer Ready'), findsOneWidget);
+    // "Timer Ready" / "Chronometer Ready" banner is removed to make way for top elements
+    expect(find.text('Chronometer Ready'), findsNothing);
 
     // Verify title and button subtitles are removed
     expect(find.text('Focus Chronometer'), findsNothing);
@@ -81,5 +82,38 @@ void main() {
     // Clean up active ticker before test finishes
     container.read(timerControllerProvider.notifier).reset();
     await tester.pump();
+  });
+
+  testWidgets(
+      'TimerScreen returns to first-boot Standby state upon session completion',
+      (WidgetTester tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: TimerScreen(),
+        ),
+      ),
+    );
+
+    // Start chronometer
+    await tester.tap(find.text('Start Chronometer'));
+    await tester.pump();
+
+    // Trigger verification success
+    await container
+        .read(timerControllerProvider.notifier)
+        .onVerificationSuccess();
+    await tester.pump();
+
+    // Verify screen returned to the first-boot Standby state:
+    expect(find.text("TODAY'S FOCUS TIME"), findsOneWidget);
+    expect(find.text('Start Chronometer'), findsOneWidget);
+    expect(find.text('Focus Session Completed!'), findsNothing);
+    expect(find.text('Session Finished'), findsNothing);
+    expect(find.text('Discipline Strikes'), findsNothing);
   });
 }

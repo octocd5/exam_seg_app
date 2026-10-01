@@ -9,11 +9,11 @@ import '../../timer/presentation/timer_screen.dart';
 
 // ============================================================================
 // 🎨 [STATE COLORS CONFIGURATION]
-// Change the background colors for the 2 app states in:
+// Change the background, text, and button colors for the 2 app states in:
 // lib/core/constants/app_colors.dart
 //
-// 1. STANDBY STATE: kTimerStandbyBackgroundColor
-// 2. ACTIVE STATE:  kTimerActiveBackgroundColor
+// 1. STANDBY STATE: kTimerStandbyBackgroundColor / kTimerStandbyTextColor
+// 2. ACTIVE STATE:  kTimerActiveBackgroundColor / kTimerActiveTextColor
 // ============================================================================
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
@@ -39,20 +39,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     final timerState = ref.watch(timerControllerProvider);
     final isTimerActive = timerState.status == TimerStatus.running ||
         timerState.status == TimerStatus.verifying;
-
-    // 🎨 Switch background color based on the 2 states
-    final Color currentBackgroundColor = isTimerActive
-        ? kTimerActiveBackgroundColor
-        : kTimerStandbyBackgroundColor;
-
-    final Color currentNavColor = isTimerActive
-        ? kNavActiveBackgroundColor
-        : kNavStandbyBackgroundColor;
+    final colors = AppThemeColors(isTimerActive);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeInOut,
-      color: currentBackgroundColor,
+      color: colors.background,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: IndexedStack(
@@ -62,12 +54,10 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         bottomNavigationBar: AnimatedContainer(
           duration: const Duration(milliseconds: 400),
           decoration: BoxDecoration(
-            color: currentNavColor,
+            color: colors.navBackground,
             border: Border(
               top: BorderSide(
-                color: isTimerActive
-                    ? const Color(0xFF0D5E48)
-                    : const Color(0xFF334155),
+                color: colors.cardBorder,
                 width: 1,
               ),
             ),
@@ -77,8 +67,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
             onTap: (index) => setState(() => _currentIndex = index),
             backgroundColor: Colors.transparent,
             type: BottomNavigationBarType.fixed,
-            selectedItemColor: const Color(0xFF10B981),
-            unselectedItemColor: const Color(0xFF94A3B8),
+            selectedItemColor: colors.accent,
+            unselectedItemColor: colors.textSecondary,
             selectedLabelStyle: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 12,
