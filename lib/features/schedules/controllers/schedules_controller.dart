@@ -1,73 +1,96 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/schedule_item.dart';
 
 class SchedulesState {
   final List<ScheduleItem> schedules;
+  final bool isLoading;
 
-  const SchedulesState({this.schedules = const []});
+  const SchedulesState({
+    this.schedules = const [],
+    this.isLoading = false,
+  });
 
-  SchedulesState copyWith({List<ScheduleItem>? schedules}) {
+  SchedulesState copyWith({
+    List<ScheduleItem>? schedules,
+    bool? isLoading,
+  }) {
     return SchedulesState(
       schedules: schedules ?? this.schedules,
+      isLoading: isLoading ?? this.isLoading,
     );
   }
 }
 
 class SchedulesController extends StateNotifier<SchedulesState> {
-  SchedulesController()
-      : super(
-          const SchedulesState(
-            schedules: [
-              ScheduleItem(
-                id: 'sched-1',
-                title: 'Morning Focus Block',
-                time: TimeOfDay(hour: 8, minute: 30),
-                durationMinutes: 45,
-                repeatDays: [1, 2, 3, 4, 5],
-                isEnabled: true,
-              ),
-              ScheduleItem(
-                id: 'sched-2',
-                title: 'Exam Review & Practice',
-                time: TimeOfDay(hour: 14, minute: 0),
-                durationMinutes: 60,
-                repeatDays: [1, 2, 3, 4, 5, 6, 7],
-                isEnabled: true,
-              ),
-              ScheduleItem(
-                id: 'sched-3',
-                title: 'Evening Deep Reading',
-                time: TimeOfDay(hour: 20, minute: 0),
-                durationMinutes: 30,
-                repeatDays: [1, 3, 5],
-                isEnabled: false,
-              ),
-            ],
-          ),
-        );
+  static const String _storageKey = 'saved_focus_schedules_v2';
+  Future<void>? _loadFuture;
 
-  void toggleSchedule(String id) {
-    state = state.copyWith(
-      schedules: state.schedules.map((s) {
-        if (s.id == id) {
-          return s.copyWith(isEnabled: !s.isEnabled);
-        }
-        return s;
-      }).toList(),
-    );
+  SchedulesController() : super(const SchedulesState(schedules: [])) {
+    loadSchedules();
   }
 
-  void addSchedule(ScheduleItem schedule) {
-    state = state.copyWith(
-      schedules: [...state.schedules, schedule],
-    );
+  Future<void> loadSchedules() {
+    return _loadFuture ??= _loadSchedulesInternal();
   }
 
-  void deleteSchedule(String id) {
-    state = state.copyWith(
-      schedules: state.schedules.where((s) => s.id != id).toList(),
-    );
+  Future<void> _loadSchedulesInternal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Clear any legacy placeholder schedules from previous runs
+      await prefs.remove('saved_focus_schedules_v1');
+
+      final jsonString = prefs.getString(_storageKey);
+      if (jsonString != null && jsonString.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(jsonString) as List<dynamic>;
+        final loaded = decoded
+            .map((e) => ScheduleItem.fromJson(e as Map<String, dynamic>))
+            .where((s) => !s.id.startsWith('sched-1') && !s.id.startsWith('sched-2') && !s.id.startsWith('sched-3'))
+            .toList();
+        state = state.copyWith(schedules: loaded, isLoading: false);
+      } else {
+        // Empty on first boot - users set them up first
+        state = state.copyWith(schedules: const [], isLoading: false);
+      }
+    } catch (_) {
+      state = state.copyWith(schedules: const [], isLoading: false);
+    }
+  }
+
+  Future<void> toggleSchedule(String id) async {
+    await loadSchedules();
+    final updated = state.schedules.map((s) {
+      if (s.id == id) {
+        return s.copyWith(isEnabled: !s.isEnabled);
+      }
+      return s;
+    }).toList();
+    state = state.copyWith(schedules: updated);
+    await _persistToPrefs(updated);
+  }
+
+  Future<void> addSchedule(ScheduleItem schedule) async {
+    await loadSchedules();
+    final updated = [...state.schedules, schedule];
+    state = state.copyWith(schedules: updated);
+    await _persistToPrefs(updated);
+  }
+
+  Future<void> deleteSchedule(String id) async {
+    await loadSchedules();
+    final updated = state.schedules.where((s) => s.id != id).toList();
+    state = state.copyWith(schedules: updated);
+    await _persistToPrefs(updated);
+  }
+
+  Future<void> _persistToPrefs(List<ScheduleItem> schedules) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(schedules.map((s) => s.toJson()).toList());
+      await prefs.setString(_storageKey, jsonString);
+    } catch (_) {}
   }
 }
 

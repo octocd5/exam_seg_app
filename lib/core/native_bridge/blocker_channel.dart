@@ -1,5 +1,28 @@
 import 'package:flutter/services.dart';
 
+class InstalledApp {
+  final String name;
+  final String packageName;
+  final Uint8List? iconBytes;
+  final bool isSystemApp;
+
+  const InstalledApp({
+    required this.name,
+    required this.packageName,
+    this.iconBytes,
+    this.isSystemApp = false,
+  });
+
+  factory InstalledApp.fromMap(Map<dynamic, dynamic> map) {
+    return InstalledApp(
+      name: map['appName'] as String? ?? 'Unknown App',
+      packageName: map['packageName'] as String? ?? '',
+      iconBytes: map['iconBytes'] as Uint8List?,
+      isSystemApp: map['isSystemApp'] as bool? ?? false,
+    );
+  }
+}
+
 class BlockerChannel {
   static const _channel = MethodChannel('com.example.exam_seg_app/blocker');
 
@@ -14,5 +37,18 @@ class BlockerChannel {
 
   static Future<void> stopLock() async {
     await _channel.invokeMethod('stopLock');
+  }
+
+  static Future<List<InstalledApp>> getInstalledApps() async {
+    try {
+      final List<dynamic>? result =
+          await _channel.invokeMethod<List<dynamic>>('getInstalledApps');
+      if (result == null) return [];
+      return result
+          .map((item) => InstalledApp.fromMap(item as Map<dynamic, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 }

@@ -17,7 +17,7 @@ void main() {
     );
   });
 
-  testWidgets('TimerScreen renders Burbuja Lottie and standby activity bubble',
+  testWidgets('TimerScreen renders BubbleIdle Lottie and standby activity bubble',
       (WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(

@@ -58,4 +58,32 @@ class ScheduleItem {
     final sorted = List<int>.from(repeatDays)..sort();
     return sorted.map((d) => dayNames[d - 1]).join(', ');
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'hour': time.hour,
+        'minute': time.minute,
+        'durationMinutes': durationMinutes,
+        'repeatDays': repeatDays,
+        'isEnabled': isEnabled,
+      };
+
+  factory ScheduleItem.fromJson(Map<String, dynamic> json) {
+    return ScheduleItem(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      time: TimeOfDay(
+        hour: json['hour'] as int? ?? 9,
+        minute: json['minute'] as int? ?? 0,
+      ),
+      durationMinutes: json['durationMinutes'] as int? ?? 45,
+      repeatDays: (json['repeatDays'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          const [1, 2, 3, 4, 5],
+      isEnabled: json['isEnabled'] as bool? ?? true,
+    );
+  }
 }
+

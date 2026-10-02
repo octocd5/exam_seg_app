@@ -138,7 +138,6 @@ class TimerController extends StateNotifier<TimerState> {
 
     final duration = state.elapsedSeconds;
     final object = state.targetObject;
-    final strikes = state.interruptionCount;
     final start = state.startTime ??
         DateTime.now().subtract(Duration(seconds: duration));
     final end = DateTime.now();

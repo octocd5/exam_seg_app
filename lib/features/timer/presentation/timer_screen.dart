@@ -1,10 +1,13 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
 import '../../activity/controllers/activity_controller.dart';
 import '../../activity/models/activity_session.dart';
+import '../../lists/presentation/widgets/active_list_card.dart';
 import '../../verification/presentation/camera_verification_screen.dart';
 import '../controllers/timer_controller.dart';
 
@@ -56,7 +59,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       _lottieController.stop();
     } else if (state == AppLifecycleState.resumed) {
       final currentStatus = ref.read(timerControllerProvider).status;
-      final isActive = currentStatus == TimerStatus.running ||
+      final isActive =
+          currentStatus == TimerStatus.running ||
           currentStatus == TimerStatus.verifying;
       if (!isActive && _lottieController.duration != null) {
         _lottieController.repeat();
@@ -65,14 +69,14 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
   }
 
   Future<void> _handleStopRequest() async {
-    final chosenObject =
-        ref.read(timerControllerProvider.notifier).requestStop();
+    final chosenObject = ref
+        .read(timerControllerProvider.notifier)
+        .requestStop();
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => CameraVerificationScreen(
-          targetObject: chosenObject,
-        ),
+        builder: (context) =>
+            CameraVerificationScreen(targetObject: chosenObject),
       ),
     );
 
@@ -97,8 +101,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor:
-            granted ? kTimerStandbyButtonColor : Colors.orange[800],
+        backgroundColor: granted
+            ? kTimerStandbyButtonColor
+            : Colors.orange[800],
       ),
     );
   }
@@ -107,10 +112,12 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
   Widget build(BuildContext context) {
     // Listen for timer status changes to control Lottie animation playback
     ref.listen<TimerState>(timerControllerProvider, (previous, next) {
-      final wasActive = previous != null &&
+      final wasActive =
+          previous != null &&
           (previous.status == TimerStatus.running ||
               previous.status == TimerStatus.verifying);
-      final isActive = next.status == TimerStatus.running ||
+      final isActive =
+          next.status == TimerStatus.running ||
           next.status == TimerStatus.verifying;
 
       if (isActive && !wasActive) {
@@ -123,7 +130,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     });
 
     final timerState = ref.watch(timerControllerProvider);
-    final isTimerActive = timerState.status == TimerStatus.running ||
+    final isTimerActive =
+        timerState.status == TimerStatus.running ||
         timerState.status == TimerStatus.verifying;
     final colors = AppThemeColors(isTimerActive);
 
@@ -149,7 +157,6 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       ),
     );
     final String todayTime = todayGroup.formattedTotalDuration;
-    final int todaySessionsCount = todayGroup.sessions.length;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
@@ -173,27 +180,51 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 12.0,
+            ),
             child: Column(
               children: [
                 _buildTopSection(
                   timerState,
                   accentColor,
                   todayTime,
-                  todaySessionsCount,
                   currentTextColor,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 4),
                 Expanded(
-                  child: _buildMiddleSection(
-                    timerState,
-                    accentColor,
-                    isTimerActive,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double maxAllowed = math.min(
+                        constraints.maxWidth * 0.90,
+                        constraints.maxHeight - 76,
+                      );
+                      final double size =
+                          maxAllowed.isFinite && maxAllowed >= 100.0
+                              ? maxAllowed.clamp(100.0, 260.0)
+                              : 180.0;
+
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          _buildMiddleSection(
+                            timerState,
+                            accentColor,
+                            isTimerActive,
+                            size,
+                          ),
+                          const SizedBox(height: 4),
+                          ActiveListCard(isTimerActive: isTimerActive),
+                          const Spacer(),
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 12),
                 _buildActionButtons(timerState),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -206,10 +237,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     TimerState state,
     Color accentColor,
     String todayTime,
-    int todaySessionsCount,
     Color textColor,
   ) {
-    final bool isTimerActive = state.status == TimerStatus.running ||
+    final bool isTimerActive =
+        state.status == TimerStatus.running ||
         state.status == TimerStatus.verifying;
 
     if (isTimerActive) {
@@ -217,7 +248,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       return _buildActiveTimerDisplay(state, accentColor, textColor);
     } else {
       // ⏱️ Standby State: Total time display at the top of the screen
-      return _buildStandbyActivityBubble(todayTime, todaySessionsCount, textColor);
+      return _buildStandbyActivityBubble(todayTime, textColor);
     }
   }
 
@@ -245,9 +276,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           decoration: BoxDecoration(
             color: accentColor.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: accentColor.withValues(alpha: 0.35),
-            ),
+            border: Border.all(color: accentColor.withValues(alpha: 0.35)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -285,76 +314,60 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     );
   }
 
-
-
   Widget _buildMiddleSection(
     TimerState state,
     Color accentColor,
     bool isTimerActive,
+    double size,
   ) {
-    return Center(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final double maxSize = constraints.maxHeight.clamp(140.0, 300.0);
-          return SizedBox(
-            width: maxSize,
-            height: maxSize,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: maxSize,
-                  height: maxSize,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        (isTimerActive
-                                ? accentColor
-                                : const Color(0xFF8B5CF6))
-                            .withValues(alpha: 0.18),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.35, 1.0],
-                    ),
-                  ),
-                ),
-                Lottie.asset(
-                  'assets/animations/Burbuja.json',
-                  controller: _lottieController,
-                  fit: BoxFit.contain,
-                  onLoaded: (composition) {
-                    _lottieController.duration = composition.duration;
-                    final currentStatus =
-                        ref.read(timerControllerProvider).status;
-                    final isActive =
-                        currentStatus == TimerStatus.running ||
-                            currentStatus == TimerStatus.verifying;
-                    if (!isActive) {
-                      _lottieController.repeat();
-                    } else {
-                      _lottieController.stop();
-                    }
-                  },
-                ),
-              ],
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  (isTimerActive ? accentColor : const Color(0xFF8B5CF6))
+                      .withValues(alpha: 0.18),
+                  Colors.transparent,
+                ],
+                stops: const [0.35, 1.0],
+              ),
             ),
-          );
-        },
+          ),
+          Lottie.asset(
+            'assets/animations/BubbleIdle.json',
+            controller: _lottieController,
+            fit: BoxFit.contain,
+            onLoaded: (composition) {
+              _lottieController.duration = composition.duration;
+              final currentStatus = ref.read(timerControllerProvider).status;
+              final isActive = currentStatus == TimerStatus.running ||
+                  currentStatus == TimerStatus.verifying;
+              if (!isActive) {
+                _lottieController.repeat();
+              } else {
+                _lottieController.stop();
+              }
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStandbyActivityBubble(
-    String todayTime,
-    int sessionCount,
-    Color textColor,
-  ) {
+  Widget _buildStandbyActivityBubble(String todayTime, Color textColor) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           decoration: BoxDecoration(
             color: const Color(0xFF282724),
             borderRadius: BorderRadius.circular(22),
@@ -401,16 +414,6 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                sessionCount == 0
-                    ? '0 sessions logged today'
-                    : '$sessionCount session${sessionCount == 1 ? '' : 's'} logged today',
-                style: TextStyle(
-                  color: textColor.withValues(alpha: 0.65),
-                  fontSize: 11,
                 ),
               ),
             ],
@@ -536,9 +539,16 @@ class _BubbleTailDownPainter extends CustomPainter {
       ..color = borderColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-    canvas.drawLine(Offset.zero, Offset(size.width / 2, size.height), borderPaint);
     canvas.drawLine(
-        Offset(size.width / 2, size.height), Offset(size.width, 0), borderPaint);
+      Offset.zero,
+      Offset(size.width / 2, size.height),
+      borderPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width / 2, size.height),
+      Offset(size.width, 0),
+      borderPaint,
+    );
   }
 
   @override
