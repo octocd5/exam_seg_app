@@ -87,6 +87,29 @@ void main() {
       expect(weekdaysSchedule.localizedDaysSummary(es), 'Días laborales (Lun-Vie)');
     });
 
+    test('Schedule and list localization strings match expected translations', () {
+      final es = EsAppStrings();
+      final en = EnAppStrings();
+
+      expect(en.schedulesAssignedList, 'Block List');
+      expect(es.schedulesAssignedList, 'Lista de Bloqueo');
+      expect(en.schedulesCurrentActiveList, 'Default (Active List)');
+      expect(es.schedulesCurrentActiveList, 'Predeterminada (Lista Activa)');
+      expect(en.schedulesNoListsCreated, 'No custom lists yet (Default list)');
+      expect(es.schedulesNoListsCreated, 'Sin listas personalizadas aún');
+
+      expect(en.schedulesEndTime, 'End Time');
+      expect(es.schedulesEndTime, 'Hora de Fin');
+      expect(en.schedulesSetEndTime, 'Set End Time');
+      expect(es.schedulesSetEndTime, 'Fijar Hora de Fin');
+      expect(en.schedulesEndsWhenStopped, 'End when stopped');
+      expect(es.schedulesEndsWhenStopped, 'Finalizar al detener');
+      expect(en.schedulesUntilStopped, 'Until stopped');
+      expect(es.schedulesUntilStopped, 'Hasta detener');
+      expect(en.schedulesEndsAt('10:00 AM'), 'Ends at 10:00 AM');
+      expect(es.schedulesEndsAt('10:00 AM'), 'Termina a las 10:00 AM');
+    });
+
     test('LocaleController changes locale correctly', () {
       final controller = LocaleController();
       expect(controller.state, isNull); // default system

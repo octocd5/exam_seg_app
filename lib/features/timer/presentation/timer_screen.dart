@@ -29,6 +29,13 @@ import '../controllers/timer_controller.dart';
 //    - Button:     kTimerActiveButtonColor (text: kTimerActiveButtonTextColor)
 // ============================================================================
 
+enum BubblePhase {
+  standby,
+  transitionToActive,
+  active,
+  transitionToStandby,
+}
+
 class TimerScreen extends ConsumerStatefulWidget {
   const TimerScreen({super.key});
 
@@ -39,19 +46,78 @@ class TimerScreen extends ConsumerStatefulWidget {
 class _TimerScreenState extends ConsumerState<TimerScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late final AnimationController _lottieController;
+  BubblePhase _bubblePhase = BubblePhase.standby;
+
+  String get _currentAnimationAsset {
+    switch (_bubblePhase) {
+      case BubblePhase.standby:
+        return 'assets/animations/BubbleTriste.json';
+      case BubblePhase.transitionToActive:
+        return 'assets/animations/BubbleTF.json';
+      case BubblePhase.active:
+        return 'assets/animations/BubbleIdle.json';
+      case BubblePhase.transitionToStandby:
+        return 'assets/animations/BubbleFT.json';
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _lottieController = AnimationController(vsync: this);
+    _lottieController.addStatusListener(_handleAnimationStatus);
+
+    // Warm up the Lottie animation caches for instant zero-latency transitions
+    for (final asset in const [
+      'assets/animations/BubbleIdle.json',
+      'assets/animations/BubbleTriste.json',
+      'assets/animations/BubbleTF.json',
+      'assets/animations/BubbleFT.json',
+    ]) {
+      AssetLottie(asset).load();
+    }
+
+    final currentTimer = ref.read(timerControllerProvider);
+    final isInitialActive = currentTimer.status == TimerStatus.running ||
+        currentTimer.status == TimerStatus.verifying;
+    _bubblePhase =
+        isInitialActive ? BubblePhase.active : BubblePhase.standby;
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _lottieController.removeStatusListener(_handleAnimationStatus);
     _lottieController.dispose();
     super.dispose();
+  }
+
+  void _handleAnimationStatus(AnimationStatus status) {
+    if (!mounted) return;
+    if (status == AnimationStatus.completed) {
+      if (_bubblePhase == BubblePhase.transitionToActive) {
+        _lottieController.stop();
+        _lottieController.reset();
+        setState(() {
+          _bubblePhase = BubblePhase.active;
+        });
+      } else if (_bubblePhase == BubblePhase.transitionToStandby) {
+        _lottieController.stop();
+        _lottieController.reset();
+        setState(() {
+          _bubblePhase = BubblePhase.standby;
+        });
+      }
+    }
+  }
+
+  void _startTransition(BubblePhase nextPhase) {
+    _lottieController.stop();
+    _lottieController.reset();
+    setState(() {
+      _bubblePhase = nextPhase;
+    });
   }
 
   @override
@@ -60,12 +126,16 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
         state == AppLifecycleState.inactive) {
       _lottieController.stop();
     } else if (state == AppLifecycleState.resumed) {
-      final currentStatus = ref.read(timerControllerProvider).status;
-      final isActive =
-          currentStatus == TimerStatus.running ||
-          currentStatus == TimerStatus.verifying;
-      if (!isActive && _lottieController.duration != null) {
-        _lottieController.repeat();
+      if (_bubblePhase == BubblePhase.standby ||
+          _bubblePhase == BubblePhase.active) {
+        if (_lottieController.duration != null) {
+          _lottieController.repeat();
+        }
+      } else {
+        if (_lottieController.duration != null &&
+            _lottieController.status != AnimationStatus.completed) {
+          _lottieController.forward();
+        }
       }
     }
   }
@@ -112,22 +182,18 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Listen for timer status changes to control Lottie animation playback
+    // Listen for timer status changes to trigger bubble animation transitions
     ref.listen<TimerState>(timerControllerProvider, (previous, next) {
-      final wasActive =
-          previous != null &&
+      final wasActive = previous != null &&
           (previous.status == TimerStatus.running ||
               previous.status == TimerStatus.verifying);
-      final isActive =
-          next.status == TimerStatus.running ||
+      final isActive = next.status == TimerStatus.running ||
           next.status == TimerStatus.verifying;
 
       if (isActive && !wasActive) {
-        _lottieController.stop();
+        _startTransition(BubblePhase.transitionToActive);
       } else if (!isActive && wasActive) {
-        if (_lottieController.duration != null) {
-          _lottieController.repeat();
-        }
+        _startTransition(BubblePhase.transitionToStandby);
       }
     });
 
@@ -341,18 +407,17 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
             ),
           ),
           Lottie.asset(
-            'assets/animations/BubbleIdle.json',
+            _currentAnimationAsset,
+            key: ValueKey(_currentAnimationAsset),
             controller: _lottieController,
             fit: BoxFit.contain,
             onLoaded: (composition) {
               _lottieController.duration = composition.duration;
-              final currentStatus = ref.read(timerControllerProvider).status;
-              final isActive = currentStatus == TimerStatus.running ||
-                  currentStatus == TimerStatus.verifying;
-              if (!isActive) {
+              if (_bubblePhase == BubblePhase.standby ||
+                  _bubblePhase == BubblePhase.active) {
                 _lottieController.repeat();
               } else {
-                _lottieController.stop();
+                _lottieController.forward(from: 0.0);
               }
             },
           ),

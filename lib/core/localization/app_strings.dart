@@ -99,6 +99,15 @@ abstract class AppStrings {
   List<String> get scheduleDayInitials;
   String get schedulesSave;
   String schedulesMinutes(int minutes);
+  String get schedulesEditModalTitle;
+  String get schedulesAssignedList;
+  String get schedulesCurrentActiveList;
+  String get schedulesNoListsCreated;
+  String get schedulesEndTime;
+  String get schedulesSetEndTime;
+  String get schedulesEndsWhenStopped;
+  String get schedulesUntilStopped;
+  String schedulesEndsAt(String time);
 
   // Manage Lists Sheet
   String get manageListsTitle;
@@ -426,6 +435,24 @@ class EnAppStrings implements AppStrings {
   String get schedulesSave => 'Save Schedule';
   @override
   String schedulesMinutes(int minutes) => '$minutes min';
+  @override
+  String get schedulesEditModalTitle => 'Edit Focus Routine';
+  @override
+  String get schedulesAssignedList => 'Block List';
+  @override
+  String get schedulesCurrentActiveList => 'Default (Active List)';
+  @override
+  String get schedulesNoListsCreated => 'No custom lists yet (Default list)';
+  @override
+  String get schedulesEndTime => 'End Time';
+  @override
+  String get schedulesSetEndTime => 'Set End Time';
+  @override
+  String get schedulesEndsWhenStopped => 'End when stopped';
+  @override
+  String get schedulesUntilStopped => 'Until stopped';
+  @override
+  String schedulesEndsAt(String time) => 'Ends at $time';
 
   // Manage Lists Sheet
   @override
@@ -864,6 +891,24 @@ class EsAppStrings implements AppStrings {
   String get schedulesSave => 'Guardar Horario';
   @override
   String schedulesMinutes(int minutes) => '$minutes min';
+  @override
+  String get schedulesEditModalTitle => 'Editar Rutina de Enfoque';
+  @override
+  String get schedulesAssignedList => 'Lista de Bloqueo';
+  @override
+  String get schedulesCurrentActiveList => 'Predeterminada (Lista Activa)';
+  @override
+  String get schedulesNoListsCreated => 'Sin listas personalizadas aún';
+  @override
+  String get schedulesEndTime => 'Hora de Fin';
+  @override
+  String get schedulesSetEndTime => 'Fijar Hora de Fin';
+  @override
+  String get schedulesEndsWhenStopped => 'Finalizar al detener';
+  @override
+  String get schedulesUntilStopped => 'Hasta detener';
+  @override
+  String schedulesEndsAt(String time) => 'Termina a las $time';
 
   // Manage Lists Sheet
   @override

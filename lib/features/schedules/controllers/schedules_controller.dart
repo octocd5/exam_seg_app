@@ -78,6 +78,18 @@ class SchedulesController extends StateNotifier<SchedulesState> {
     await _persistToPrefs(updated);
   }
 
+  Future<void> updateSchedule(ScheduleItem schedule) async {
+    await loadSchedules();
+    final updated = state.schedules.map((s) {
+      if (s.id == schedule.id) {
+        return schedule;
+      }
+      return s;
+    }).toList();
+    state = state.copyWith(schedules: updated);
+    await _persistToPrefs(updated);
+  }
+
   Future<void> deleteSchedule(String id) async {
     await loadSchedules();
     final updated = state.schedules.where((s) => s.id != id).toList();

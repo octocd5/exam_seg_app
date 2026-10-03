@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/localization/locale_controller.dart';
+import '../../lists/controllers/lists_controller.dart';
+import '../../lists/models/app_block_list.dart';
 import '../../timer/controllers/timer_controller.dart';
 import '../controllers/schedules_controller.dart';
 import '../models/schedule_item.dart';
@@ -10,12 +12,13 @@ import '../models/schedule_item.dart';
 class SchedulesScreen extends ConsumerWidget {
   const SchedulesScreen({super.key});
 
-  void _showAddScheduleSheet(
+  void _showScheduleSheet(
     BuildContext context,
     WidgetRef ref,
     AppThemeColors colors,
-    AppStrings strings,
-  ) {
+    AppStrings strings, {
+    ScheduleItem? scheduleToEdit,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -23,11 +26,16 @@ class SchedulesScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => _AddScheduleModal(
+      builder: (ctx) => _AddOrEditScheduleModal(
         colors: colors,
         strings: strings,
-        onSave: (newSchedule) {
-          ref.read(schedulesControllerProvider.notifier).addSchedule(newSchedule);
+        scheduleToEdit: scheduleToEdit,
+        onSave: (savedSchedule) {
+          if (scheduleToEdit != null) {
+            ref.read(schedulesControllerProvider.notifier).updateSchedule(savedSchedule);
+          } else {
+            ref.read(schedulesControllerProvider.notifier).addSchedule(savedSchedule);
+          }
         },
       ),
     );
@@ -107,7 +115,7 @@ class SchedulesScreen extends ConsumerWidget {
           IconButton(
             tooltip: strings.schedulesAddSchedule,
             icon: Icon(Icons.add_circle_outline, color: colors.accent, size: 28),
-            onPressed: () => _showAddScheduleSheet(context, ref, colors, strings),
+            onPressed: () => _showScheduleSheet(context, ref, colors, strings),
           ),
         ],
       ),
@@ -133,7 +141,7 @@ class SchedulesScreen extends ConsumerWidget {
                     ),
                   ),
                   TextButton.icon(
-                    onPressed: () => _showAddScheduleSheet(context, ref, colors, strings),
+                    onPressed: () => _showScheduleSheet(context, ref, colors, strings),
                     icon: Icon(Icons.add, size: 18, color: colors.accent),
                     label: Text(
                       strings.schedulesNewPlan,
@@ -156,6 +164,13 @@ class SchedulesScreen extends ConsumerWidget {
                             colors: colors,
                             strings: strings,
                             onToggle: () => notifier.toggleSchedule(schedule.id),
+                            onEdit: () => _showScheduleSheet(
+                              context,
+                              ref,
+                              colors,
+                              strings,
+                              scheduleToEdit: schedule,
+                            ),
                             onDelete: () => _confirmDelete(context, ref, schedule, colors, strings),
                           );
                         },
@@ -173,7 +188,7 @@ class SchedulesScreen extends ConsumerWidget {
           strings.schedulesAddSchedule,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        onPressed: () => _showAddScheduleSheet(context, ref, colors, strings),
+        onPressed: () => _showScheduleSheet(context, ref, colors, strings),
       ),
     );
   }
@@ -235,7 +250,7 @@ class SchedulesScreen extends ConsumerWidget {
               foregroundColor: colors.accentText,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () => _showAddScheduleSheet(context, ref, colors, strings),
+            onPressed: () => _showScheduleSheet(context, ref, colors, strings),
             icon: const Icon(Icons.add),
             label: Text(strings.schedulesCreateFirst),
           ),
@@ -245,11 +260,12 @@ class SchedulesScreen extends ConsumerWidget {
   }
 }
 
-class _ScheduleCard extends StatelessWidget {
+class _ScheduleCard extends ConsumerWidget {
   final ScheduleItem schedule;
   final AppThemeColors colors;
   final AppStrings strings;
   final VoidCallback onToggle;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _ScheduleCard({
@@ -257,134 +273,270 @@ class _ScheduleCard extends StatelessWidget {
     required this.colors,
     required this.strings,
     required this.onToggle,
+    required this.onEdit,
     required this.onDelete,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: schedule.isEnabled
-              ? colors.accent.withValues(alpha: 0.45)
-              : colors.cardBorder,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listsState = ref.watch(listsControllerProvider);
+    AppBlockList? assignedList;
+    if (schedule.listId != null) {
+      try {
+        assignedList = listsState.lists.firstWhere((l) => l.id == schedule.listId);
+      } catch (_) {
+        assignedList = null;
+      }
+    }
+
+    final String listDisplayName = assignedList?.name ??
+        schedule.listName ??
+        strings.schedulesCurrentActiveList;
+    final bool isPhoneWide = assignedList?.isPhoneWideBan ?? false;
+
+    return InkWell(
+      onTap: onEdit,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: schedule.isEnabled
+                ? colors.accent.withValues(alpha: 0.45)
+                : colors.cardBorder,
+          ),
         ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      schedule.formattedTime,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: schedule.isEnabled ? colors.text : colors.textMuted,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: schedule.isEnabled
-                            ? colors.accent.withValues(alpha: 0.18)
-                            : colors.cardBorder.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        strings.schedulesMinutes(schedule.durationMinutes),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Text(
+                        schedule.formattedTime,
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: schedule.isEnabled
-                              ? colors.accent
-                              : colors.textSecondary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: schedule.isEnabled ? colors.text : colors.textMuted,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  schedule.title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: schedule.isEnabled ? colors.text : colors.textSecondary,
+                      if (schedule.endTime != null) ...[
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 15,
+                          color: colors.textMuted,
+                        ),
+                        Text(
+                          schedule.formattedEndTime!,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: schedule.isEnabled ? colors.text : colors.textMuted,
+                          ),
+                        ),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: schedule.isEnabled
+                              ? colors.accent.withValues(alpha: 0.18)
+                              : colors.cardBorder.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              schedule.endTime != null
+                                  ? Icons.access_time_rounded
+                                  : Icons.stop_circle_outlined,
+                              size: 12,
+                              color: schedule.isEnabled
+                                  ? colors.accent
+                                  : colors.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              schedule.endTime != null
+                                  ? strings.schedulesEndsAt(schedule.formattedEndTime!)
+                                  : strings.schedulesUntilStopped,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: schedule.isEnabled
+                                    ? colors.accent
+                                    : colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.repeat_rounded,
-                      size: 13,
-                      color: colors.textMuted,
+                  const SizedBox(height: 6),
+                  Text(
+                    schedule.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: schedule.isEnabled ? colors.text : colors.textSecondary,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      schedule.localizedDaysSummary(strings),
-                      style: TextStyle(
-                        fontSize: 12,
+                  ),
+                  const SizedBox(height: 5),
+                  // Repeat days row
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.repeat_rounded,
+                        size: 13,
                         color: colors.textMuted,
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 4),
+                      Text(
+                        schedule.localizedDaysSummary(strings),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  // Assigned Block List row
+                  Row(
+                    children: [
+                      Icon(
+                        isPhoneWide
+                            ? Icons.phone_android_rounded
+                            : Icons.shield_outlined,
+                        size: 13,
+                        color: schedule.isEnabled ? colors.accent : colors.textMuted,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          listDisplayName,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: schedule.isEnabled ? colors.accent : colors.textMuted,
+                          ),
+                        ),
+                      ),
+                      if (assignedList != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: (isPhoneWide ? colors.accent : colors.cardBorder)
+                                .withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            isPhoneWide
+                                ? strings.manageListsPhoneWideBadge
+                                : strings.listStandardMultipleBlocked(assignedList.appCount),
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: isPhoneWide ? colors.accent : colors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: schedule.isEnabled,
-            activeThumbColor: colors.accent,
-            activeTrackColor: colors.accent.withValues(alpha: 0.35),
-            inactiveThumbColor: colors.cardBorder,
-            inactiveTrackColor: colors.cardBorder.withValues(alpha: 0.4),
-            onChanged: (_) => onToggle(),
-          ),
-          IconButton(
-            tooltip: strings.schedulesDelete,
-            icon: Icon(Icons.delete_outline, size: 20, color: colors.textMuted),
-            onPressed: onDelete,
-          ),
-        ],
+            Switch(
+              value: schedule.isEnabled,
+              activeThumbColor: colors.accent,
+              activeTrackColor: colors.accent.withValues(alpha: 0.35),
+              inactiveThumbColor: colors.cardBorder,
+              inactiveTrackColor: colors.cardBorder.withValues(alpha: 0.4),
+              onChanged: (_) => onToggle(),
+            ),
+            IconButton(
+              tooltip: strings.manageListsEditButton,
+              icon: Icon(Icons.edit_outlined, size: 19, color: colors.textMuted),
+              onPressed: onEdit,
+            ),
+            IconButton(
+              tooltip: strings.schedulesDelete,
+              icon: Icon(Icons.delete_outline, size: 20, color: colors.textMuted),
+              onPressed: onDelete,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _AddScheduleModal extends StatefulWidget {
+class _AddOrEditScheduleModal extends ConsumerStatefulWidget {
   final AppThemeColors colors;
   final AppStrings strings;
+  final ScheduleItem? scheduleToEdit;
   final ValueChanged<ScheduleItem> onSave;
 
-  const _AddScheduleModal({
+  const _AddOrEditScheduleModal({
     required this.colors,
     required this.strings,
+    this.scheduleToEdit,
     required this.onSave,
   });
 
   @override
-  State<_AddScheduleModal> createState() => _AddScheduleModalState();
+  ConsumerState<_AddOrEditScheduleModal> createState() =>
+      _AddOrEditScheduleModalState();
 }
 
-class _AddScheduleModalState extends State<_AddScheduleModal> {
+class _AddOrEditScheduleModalState
+    extends ConsumerState<_AddOrEditScheduleModal> {
   late final TextEditingController _titleController;
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
-  int _selectedDuration = 45;
-  final List<int> _selectedDays = [1, 2, 3, 4, 5];
+  late TimeOfDay _selectedStartTime;
+  TimeOfDay? _selectedEndTime;
+  bool _hasEndTime = true;
+  late List<int> _selectedDays;
+  String? _selectedListId;
+  String? _selectedListName;
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.strings.schedulesModalTitle);
+    final edit = widget.scheduleToEdit;
+    if (edit != null) {
+      _titleController = TextEditingController(text: edit.title);
+      _selectedStartTime = edit.time;
+      _selectedEndTime = edit.endTime;
+      _hasEndTime = edit.endTime != null;
+      _selectedDays = List.from(edit.repeatDays);
+      _selectedListId = edit.listId;
+      _selectedListName = edit.listName;
+    } else {
+      _titleController =
+          TextEditingController(text: widget.strings.schedulesModalTitle);
+      _selectedStartTime = const TimeOfDay(hour: 9, minute: 0);
+      _selectedEndTime = const TimeOfDay(hour: 10, minute: 0);
+      _hasEndTime = true;
+      _selectedDays = [1, 2, 3, 4, 5];
+      // Default to currently active list if one exists
+      final listsState = ref.read(listsControllerProvider);
+      if (listsState.lists.isNotEmpty) {
+        final active = listsState.activeList;
+        _selectedListId = active?.id ?? listsState.lists.first.id;
+        _selectedListName = active?.name ?? listsState.lists.first.name;
+      }
+    }
   }
 
   @override
@@ -393,11 +545,11 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
     super.dispose();
   }
 
-  Future<void> _pickTime() async {
+  Future<void> _pickStartTime() async {
     final colors = widget.colors;
     final picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime,
+      initialTime: _selectedStartTime,
       builder: (context, child) {
         final currentTheme = Theme.of(context);
         return Theme(
@@ -414,7 +566,49 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
       },
     );
     if (picked != null) {
-      setState(() => _selectedTime = picked);
+      setState(() {
+        _selectedStartTime = picked;
+        // If end time is not set or earlier, advance it
+        if (_hasEndTime && _selectedEndTime == null) {
+          _selectedEndTime = TimeOfDay(
+            hour: (picked.hour + 1) % 24,
+            minute: picked.minute,
+          );
+        }
+      });
+    }
+  }
+
+  Future<void> _pickEndTime() async {
+    final colors = widget.colors;
+    final initial = _selectedEndTime ??
+        TimeOfDay(
+          hour: (_selectedStartTime.hour + 1) % 24,
+          minute: _selectedStartTime.minute,
+        );
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        final currentTheme = Theme.of(context);
+        return Theme(
+          data: currentTheme.copyWith(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: colors.accent,
+              brightness: colors.isTimerActive ? Brightness.light : Brightness.dark,
+              surface: colors.cardBackground,
+              primary: colors.accent,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedEndTime = picked;
+        _hasEndTime = true;
+      });
     }
   }
 
@@ -436,12 +630,21 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
     if (title.isEmpty) return;
 
     final newSchedule = ScheduleItem(
-      id: 'sched-${DateTime.now().millisecondsSinceEpoch}',
+      id: widget.scheduleToEdit?.id ??
+          'sched-${DateTime.now().millisecondsSinceEpoch}',
       title: title,
-      time: _selectedTime,
-      durationMinutes: _selectedDuration,
+      time: _selectedStartTime,
+      endTime: _hasEndTime
+          ? (_selectedEndTime ??
+              TimeOfDay(
+                hour: (_selectedStartTime.hour + 1) % 24,
+                minute: _selectedStartTime.minute,
+              ))
+          : null,
       repeatDays: List.from(_selectedDays),
-      isEnabled: true,
+      isEnabled: widget.scheduleToEdit?.isEnabled ?? true,
+      listId: _selectedListId,
+      listName: _selectedListName,
     );
 
     widget.onSave(newSchedule);
@@ -454,6 +657,11 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
     final strings = widget.strings;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final dayLabels = strings.scheduleDayInitials;
+    final listsState = ref.watch(listsControllerProvider);
+
+    final bool listExists = _selectedListId != null &&
+        listsState.lists.any((l) => l.id == _selectedListId);
+    final String? dropdownValue = listExists ? _selectedListId : null;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -462,191 +670,478 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
         top: 24,
         bottom: 24 + bottomInset,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                strings.schedulesModalTitle,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: colors.text,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  widget.scheduleToEdit != null
+                      ? strings.schedulesEditModalTitle
+                      : strings.schedulesModalTitle,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colors.text,
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: Icon(Icons.close, color: colors.textSecondary),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _titleController,
-            style: TextStyle(color: colors.text),
-            decoration: InputDecoration(
-              labelText: strings.schedulesRoutineName,
-              labelStyle: TextStyle(color: colors.textSecondary),
-              filled: true,
-              fillColor: colors.background,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.cardBorder),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.cardBorder),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.accent, width: 1.5),
+                IconButton(
+                  icon: Icon(Icons.close, color: colors.textSecondary),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _titleController,
+              style: TextStyle(color: colors.text),
+              decoration: InputDecoration(
+                labelText: strings.schedulesRoutineName,
+                labelStyle: TextStyle(color: colors.textSecondary),
+                filled: true,
+                fillColor: colors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.cardBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.cardBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.accent, width: 1.5),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: _pickTime,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: colors.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.cardBorder),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              strings.schedulesStartTime,
-                              style: TextStyle(color: colors.textSecondary, fontSize: 11),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _selectedTime.format(context),
+            const SizedBox(height: 16),
+            // Schedule End Mode Toggle (Set End Time vs End When Stopped)
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _hasEndTime = true;
+                        _selectedEndTime ??= TimeOfDay(
+                          hour: (_selectedStartTime.hour + 1) % 24,
+                          minute: _selectedStartTime.minute,
+                        );
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: _hasEndTime
+                            ? colors.accent.withValues(alpha: 0.18)
+                            : colors.background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _hasEndTime ? colors.accent : colors.cardBorder,
+                          width: _hasEndTime ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 15,
+                            color: _hasEndTime ? colors.accent : colors.textSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              strings.schedulesSetEndTime,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: colors.text,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                color: _hasEndTime ? colors.accent : colors.textSecondary,
                               ),
                             ),
-                          ],
-                        ),
-                        Icon(Icons.access_time_rounded, color: colors.accent),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: colors.background,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.cardBorder),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        strings.schedulesDuration,
-                        style: TextStyle(color: colors.textSecondary, fontSize: 11),
-                      ),
-                      const SizedBox(height: 2),
-                      DropdownButton<int>(
-                        value: _selectedDuration,
-                        dropdownColor: colors.cardBackground,
-                        underline: const SizedBox(),
-                        isDense: true,
-                        style: TextStyle(
-                          color: colors.text,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _hasEndTime = false;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: !_hasEndTime
+                            ? colors.accent.withValues(alpha: 0.18)
+                            : colors.background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: !_hasEndTime ? colors.accent : colors.cardBorder,
+                          width: !_hasEndTime ? 1.5 : 1,
                         ),
-                        items: [
-                          DropdownMenuItem(value: 15, child: Text(strings.schedulesMinutes(15))),
-                          DropdownMenuItem(value: 25, child: Text(strings.schedulesMinutes(25))),
-                          DropdownMenuItem(value: 45, child: Text(strings.schedulesMinutes(45))),
-                          DropdownMenuItem(value: 60, child: Text(strings.schedulesMinutes(60))),
-                          DropdownMenuItem(value: 90, child: Text(strings.schedulesMinutes(90))),
-                          DropdownMenuItem(value: 120, child: Text(strings.schedulesMinutes(120))),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.stop_circle_outlined,
+                            size: 15,
+                            color: !_hasEndTime ? colors.accent : colors.textSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              strings.schedulesEndsWhenStopped,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: !_hasEndTime ? colors.accent : colors.textSecondary,
+                              ),
+                            ),
+                          ),
                         ],
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedDuration = val);
-                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Start Time & End Time row
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: _pickStartTime,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: colors.background,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.cardBorder),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                strings.schedulesStartTime,
+                                style: TextStyle(color: colors.textSecondary, fontSize: 11),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _selectedStartTime.format(context),
+                                style: TextStyle(
+                                  color: colors.text,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Icon(Icons.access_time_rounded, color: colors.accent),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _hasEndTime
+                      ? InkWell(
+                          onTap: _pickEndTime,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: colors.background,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: colors.accent.withValues(alpha: 0.5)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      strings.schedulesEndTime,
+                                      style: TextStyle(
+                                        color: colors.accent,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      (_selectedEndTime ??
+                                              TimeOfDay(
+                                                hour: (_selectedStartTime.hour + 1) % 24,
+                                                minute: _selectedStartTime.minute,
+                                              ))
+                                          .format(context),
+                                      style: TextStyle(
+                                        color: colors.text,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Icon(Icons.alarm_on_rounded, color: colors.accent),
+                              ],
+                            ),
+                          ),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: colors.background,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.cardBorder),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    strings.schedulesEndTime,
+                                    style: TextStyle(color: colors.textSecondary, fontSize: 11),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    strings.schedulesUntilStopped,
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Icon(Icons.stop_circle_outlined, color: colors.textMuted),
+                            ],
+                          ),
+                        ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Block List Picker Section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: colors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.shield_outlined, size: 14, color: colors.accent),
+                      const SizedBox(width: 6),
+                      Text(
+                        strings.schedulesAssignedList,
+                        style: TextStyle(color: colors.textSecondary, fontSize: 11),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            strings.schedulesActiveDays,
-            style: TextStyle(color: colors.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(7, (index) {
-              final dayNum = index + 1;
-              final isSelected = _selectedDays.contains(dayNum);
-              return GestureDetector(
-                onTap: () => _toggleDay(dayNum),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: isSelected ? colors.accent : colors.background,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? colors.accent : colors.cardBorder,
+                  const SizedBox(height: 6),
+                  if (listsState.lists.isEmpty) ...[
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 16, color: colors.textMuted),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            strings.schedulesNoListsCreated,
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    dayLabels[index],
-                    style: TextStyle(
-                      color: isSelected ? colors.accentText : colors.textSecondary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                  ] else ...[
+                    DropdownButton<String?>(
+                      value: dropdownValue,
+                      dropdownColor: colors.cardBackground,
+                      underline: const SizedBox(),
+                      isExpanded: true,
+                      isDense: true,
+                      icon: Icon(Icons.arrow_drop_down_rounded, color: colors.accent),
+                      style: TextStyle(
+                        color: colors.text,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      items: [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Row(
+                            children: [
+                              Icon(Icons.layers_outlined, size: 16, color: colors.textSecondary),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  strings.schedulesCurrentActiveList,
+                                  style: TextStyle(
+                                    color: colors.text,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ...listsState.lists.map((list) {
+                          return DropdownMenuItem<String?>(
+                            value: list.id,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  list.isPhoneWideBan
+                                      ? Icons.phone_android_rounded
+                                      : Icons.shield_outlined,
+                                  size: 16,
+                                  color: colors.accent,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    list.name,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: colors.text,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: (list.isPhoneWideBan ? colors.accent : colors.cardBorder)
+                                        .withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: (list.isPhoneWideBan ? colors.accent : colors.cardBorder)
+                                          .withValues(alpha: 0.35),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    list.isPhoneWideBan
+                                        ? strings.manageListsPhoneWideBadge
+                                        : strings.listStandardMultipleBlocked(list.appCount),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: list.isPhoneWideBan ? colors.accent : colors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                      onChanged: (selectedId) {
+                        setState(() {
+                          _selectedListId = selectedId;
+                          if (selectedId != null) {
+                            final match = listsState.lists.where((l) => l.id == selectedId);
+                            _selectedListName = match.isNotEmpty ? match.first.name : null;
+                          } else {
+                            _selectedListName = null;
+                          }
+                        });
+                      },
                     ),
-                  ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.accent,
-                foregroundColor: colors.accentText,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: _save,
-              child: Text(
-                strings.schedulesSave,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ],
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(
+              strings.schedulesActiveDays,
+              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(7, (index) {
+                final dayNum = index + 1;
+                final isSelected = _selectedDays.contains(dayNum);
+                return GestureDetector(
+                  onTap: () => _toggleDay(dayNum),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: isSelected ? colors.accent : colors.background,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? colors.accent : colors.cardBorder,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      dayLabels[index],
+                      style: TextStyle(
+                        color: isSelected ? colors.accentText : colors.textSecondary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.accent,
+                  foregroundColor: colors.accentText,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _save,
+                child: Text(
+                  strings.schedulesSave,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
