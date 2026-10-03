@@ -295,6 +295,25 @@ class FocusOverlayService : Service() {
         ).toInt()
     }
 
+    private val isSpanish: Boolean
+        get() = java.util.Locale.getDefault().language.equals("es", ignoreCase = true)
+
+    private fun getOverlayMessage(appLabel: String, phoneWide: Boolean): String {
+        return if (phoneWide) {
+            if (isSpanish) {
+                "Bloqueo Total del Teléfono Activo\n\n\"$appLabel\" está restringida. Solo las aplicaciones excluidas en tu lista están accesibles."
+            } else {
+                "Phone-Wide Focus Ban Active\n\n\"$appLabel\" is restricted. Only apps excluded in your study list are accessible."
+            }
+        } else {
+            if (isSpanish) {
+                "\"$appLabel\" está bloqueada\n\nEsta app está en tu lista de distracciones. ¡Mantén tu concentración!"
+            } else {
+                "\"$appLabel\" is Blocked\n\nThis app is on your study distraction list. Stay in your focus zone!"
+            }
+        }
+    }
+
     private fun buildOverlayView(appLabel: String, phoneWide: Boolean): View {
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor("#F51D1C1A")) // Standby background
@@ -348,7 +367,7 @@ class FocusOverlayService : Service() {
 
         // Title
         val titleView = TextView(this).apply {
-            text = "Focus Guard Active"
+            text = if (isSpanish) "Focus Guard Activo" else "Focus Guard Active"
             textSize = 21f
             setTextColor(Color.parseColor("#FAF8F6")) // Standby text
             typeface = Typeface.DEFAULT_BOLD
@@ -370,11 +389,7 @@ class FocusOverlayService : Service() {
             setTextColor(Color.parseColor("#A6A4A2")) // Standby text secondary
             gravity = Gravity.CENTER
             setLineSpacing(0f, 1.25f)
-            text = if (phoneWide) {
-                "Phone-Wide Focus Ban Active\n\n\"$appLabel\" is restricted. Only apps excluded in your study list are accessible."
-            } else {
-                "\"$appLabel\" is Blocked\n\nThis app is on your study distraction list. Stay in your focus zone!"
-            }
+            text = getOverlayMessage(appLabel, phoneWide)
         }
         val messageParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -386,7 +401,7 @@ class FocusOverlayService : Service() {
 
         // Primary Button: Return to Focus Timer
         val returnButton = Button(this).apply {
-            text = "RETURN TO FOCUS TIMER"
+            text = if (isSpanish) "VOLVER AL TEMPORIZADOR" else "RETURN TO FOCUS TIMER"
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.parseColor("#1D1C1A")) // Standby button text
@@ -415,7 +430,7 @@ class FocusOverlayService : Service() {
 
         // Secondary Button: Exit to Home Screen
         val homeButton = Button(this).apply {
-            text = "Go to Home Screen"
+            text = if (isSpanish) "Ir a la Pantalla de Inicio" else "Go to Home Screen"
             textSize = 13f
             setTextColor(Color.parseColor("#FAF8F6")) // Standby text
 
@@ -447,21 +462,21 @@ class FocusOverlayService : Service() {
 
     private fun updateOverlayContent(appLabel: String, phoneWide: Boolean) {
         val messageView = overlayView?.findViewWithTag<TextView>("message_view")
-        messageView?.text = if (phoneWide) {
-            "Phone-Wide Focus Ban Active\n\n\"$appLabel\" is restricted. Only apps excluded in your study list are accessible."
-        } else {
-            "\"$appLabel\" is Blocked\n\nThis app is on your study distraction list. Stay in your focus zone!"
-        }
+        messageView?.text = getOverlayMessage(appLabel, phoneWide)
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Focus Guard Blocker Service",
+                if (isSpanish) "Servicio de Bloqueo Focus Guard" else "Focus Guard Blocker Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Keeps distractions blocked while focus sessions are active"
+                description = if (isSpanish) {
+                    "Mantiene las distracciones bloqueadas durante las sesiones de enfoque"
+                } else {
+                    "Keeps distractions blocked while focus sessions are active"
+                }
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
@@ -487,8 +502,8 @@ class FocusOverlayService : Service() {
         }
 
         return builder
-            .setContentTitle("Focus Guard Active")
-            .setContentText("Distraction overlay protection running")
+            .setContentTitle(if (isSpanish) "Focus Guard Activo" else "Focus Guard Active")
+            .setContentText(if (isSpanish) "Protección de superposición de distracciones en ejecución" else "Distraction overlay protection running")
             .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

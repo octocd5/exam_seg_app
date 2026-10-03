@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_strings.dart';
 
 class ScheduleItem {
   final String id;
@@ -57,6 +58,22 @@ class ScheduleItem {
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final sorted = List<int>.from(repeatDays)..sort();
     return sorted.map((d) => dayNames[d - 1]).join(', ');
+  }
+
+  String localizedDaysSummary(AppStrings strings) {
+    if (repeatDays.length == 7) return strings.scheduleEveryday;
+    if (repeatDays.length == 5 &&
+        !repeatDays.contains(6) &&
+        !repeatDays.contains(7)) {
+      return strings.scheduleWeekdays;
+    }
+    if (repeatDays.length == 2 &&
+        repeatDays.contains(6) &&
+        repeatDays.contains(7)) {
+      return strings.scheduleWeekends;
+    }
+    final sorted = List<int>.from(repeatDays)..sort();
+    return sorted.map((d) => strings.scheduleShortDayNames[d - 1]).join(', ');
   }
 
   Map<String, dynamic> toJson() => {

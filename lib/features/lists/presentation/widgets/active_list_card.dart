@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/locale_controller.dart';
 import '../../controllers/lists_controller.dart';
 import '../create_or_edit_list_sheet.dart';
 import '../manage_lists_sheet.dart';
@@ -16,16 +17,36 @@ class ActiveListCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = AppThemeColors(isTimerActive);
+    final strings = ref.watch(appStringsProvider);
     final listsState = ref.watch(listsControllerProvider);
     final activeList = listsState.activeList;
     final hasLists = listsState.lists.isNotEmpty && activeList != null;
 
-    final String listName = hasLists ? activeList.name : 'No Lists Created';
-    final String blockedText = hasLists
-        ? activeList.blockedSummary
-        : (isTimerActive
-            ? 'No apps currently blocked'
-            : 'Tap to create your first app list');
+    final String listName = hasLists ? activeList.name : strings.listNoListsCreated;
+    final String blockedText;
+    if (hasLists) {
+      if (activeList.isPhoneWideBan) {
+        if (activeList.appNames.isEmpty) {
+          blockedText = strings.listPhoneWideAllBlocked;
+        } else if (activeList.appNames.length == 1) {
+          blockedText = strings.listPhoneWideSingleAllowed;
+        } else {
+          blockedText = strings.listPhoneWideMultipleAllowed(activeList.appNames.length);
+        }
+      } else {
+        if (activeList.appNames.isEmpty) {
+          blockedText = strings.listStandardNoneBlocked;
+        } else if (activeList.appNames.length == 1) {
+          blockedText = strings.listStandardSingleBlocked;
+        } else {
+          blockedText = strings.listStandardMultipleBlocked(activeList.appNames.length);
+        }
+      }
+    } else {
+      blockedText = isTimerActive
+          ? strings.listNoAppsBlocked
+          : strings.listTapToCreateFirst;
+    }
 
     return Container(
       width: double.infinity,
@@ -128,7 +149,7 @@ class ActiveListCard extends ConsumerWidget {
                                 ),
                               ),
                               child: Text(
-                                'Phone-Wide Ban',
+                                strings.listPhoneWideBanBadge,
                                 style: TextStyle(
                                   color: colors.accent,
                                   fontSize: 9.5,
@@ -174,9 +195,9 @@ class ActiveListCard extends ConsumerWidget {
                         );
                       },
                       icon: const Icon(Icons.add, size: 14),
-                      label: const Text(
-                        'Create',
-                        style: TextStyle(
+                      label: Text(
+                        strings.listCreateButton,
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -204,9 +225,9 @@ class ActiveListCard extends ConsumerWidget {
                         );
                       },
                       icon: const Icon(Icons.visibility_outlined, size: 13),
-                      label: const Text(
-                        'View',
-                        style: TextStyle(
+                      label: Text(
+                        strings.listViewButton,
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -238,9 +259,9 @@ class ActiveListCard extends ConsumerWidget {
                         );
                       },
                       icon: const Icon(Icons.add, size: 15),
-                      label: const Text(
-                        'New',
-                        style: TextStyle(
+                      label: Text(
+                        strings.listNewButton,
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -272,7 +293,7 @@ class ActiveListCard extends ConsumerWidget {
                       size: 13,
                     ),
                     label: Text(
-                      isTimerActive ? 'View' : 'Manage',
+                      isTimerActive ? strings.listViewButton : strings.listManageButton,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,

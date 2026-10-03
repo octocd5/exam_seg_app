@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../../activity/presentation/activity_screen.dart';
 import '../../schedules/presentation/schedules_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
@@ -41,6 +42,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         timerState.status == TimerStatus.verifying;
     final colors = AppThemeColors(isTimerActive);
 
+    final strings = ref.watch(appStringsProvider);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeInOut,
@@ -79,26 +82,26 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
               letterSpacing: 0.3,
             ),
             elevation: 0,
-            items: const [
+            items: [
               BottomNavigationBarItem(
-                icon: Icon(Icons.timer_outlined),
-                activeIcon: Icon(Icons.timer),
-                label: 'Timer',
+                icon: const Icon(Icons.timer_outlined),
+                activeIcon: const Icon(Icons.timer),
+                label: strings.navTimer,
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.calendar_month_outlined),
-                activeIcon: Icon(Icons.calendar_month),
-                label: 'Schedules',
+                icon: const Icon(Icons.calendar_month_outlined),
+                activeIcon: const Icon(Icons.calendar_month),
+                label: strings.navSchedules,
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.bar_chart_outlined),
-                activeIcon: Icon(Icons.bar_chart_rounded),
-                label: 'Activity',
+                icon: const Icon(Icons.bar_chart_outlined),
+                activeIcon: const Icon(Icons.bar_chart_rounded),
+                label: strings.navActivity,
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                activeIcon: Icon(Icons.settings),
-                label: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
+                activeIcon: const Icon(Icons.settings),
+                label: strings.navSettings,
               ),
             ],
           ),

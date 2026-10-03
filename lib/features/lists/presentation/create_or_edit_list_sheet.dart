@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
 import '../controllers/lists_controller.dart';
 import '../models/app_block_list.dart';
 import '../models/app_catalog.dart';
+
+enum _AppFilterType { all, userApps, selected }
 
 class CreateOrEditListSheet extends ConsumerStatefulWidget {
   final AppBlockList? existingList;
@@ -49,7 +53,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
 
   List<InstalledApp> _installedApps = [];
   bool _isLoadingApps = true;
-  String _selectedFilter = 'All'; // 'All', 'User Apps', 'Selected'
+  _AppFilterType _selectedFilter = _AppFilterType.all;
   String _searchQuery = '';
   late bool _isPhoneWideBan;
 
@@ -143,11 +147,11 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
     });
   }
 
-  void _saveList() {
+  void _saveList(AppStrings strings) {
     if (widget.isTimerActive) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot create or edit lists while the timer is active!'),
+        SnackBar(
+          content: Text(strings.listCannotEditTimerActive),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -157,9 +161,9 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a name for the list'),
-          backgroundColor: Color(0xFF383633),
+        SnackBar(
+          content: Text(strings.listErrorNameEmpty),
+          backgroundColor: const Color(0xFF383633),
         ),
       );
       return;
@@ -188,7 +192,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          isEditing ? 'List "$name" updated!' : 'List "$name" created!',
+          isEditing ? strings.listUpdatedSnackbar(name) : strings.listCreatedSnackbar(name),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: const Color(0xFF10B981),
@@ -199,14 +203,14 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = AppThemeColors(widget.isTimerActive);
+    final strings = ref.watch(appStringsProvider);
     final isEditing = widget.existingList != null;
 
     // Filter apps
-    final filterOptions = ['All', 'User Apps', 'Selected'];
     final filteredApps = _installedApps.where((app) {
       final matchesFilter = switch (_selectedFilter) {
-        'User Apps' => !app.isSystemApp,
-        'Selected' => _selectedApps.contains(app.name),
+        _AppFilterType.userApps => !app.isSystemApp,
+        _AppFilterType.selected => _selectedApps.contains(app.name),
         _ => true,
       };
 
@@ -250,7 +254,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      isEditing ? 'Edit List' : 'Create New List',
+                      isEditing ? strings.editListTitle : strings.createListTitle,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -269,7 +273,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
 
             // List Name input field
             Text(
-              'LIST NAME',
+              strings.listNameHeader,
               style: TextStyle(
                 color: colors.textSecondary,
                 fontSize: 11,
@@ -283,7 +287,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
               enabled: !widget.isTimerActive,
               style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
               decoration: InputDecoration(
-                hintText: 'Enter list name (e.g. Study, Work)...',
+                hintText: strings.listNameHint,
                 hintStyle: TextStyle(color: colors.textMuted),
                 filled: true,
                 fillColor: colors.background,
@@ -309,7 +313,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
 
             // Blocking Rule / Mode Selector
             Text(
-              'BLOCKING RULE',
+              strings.listBlockingRuleSectionHeader,
               style: TextStyle(
                 color: colors.textSecondary,
                 fontSize: 11,
@@ -369,7 +373,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Block Selected',
+                                  strings.listStandardModeTitle,
                                   style: TextStyle(
                                     color: !_isPhoneWideBan ? colors.text : colors.textSecondary,
                                     fontWeight: !_isPhoneWideBan ? FontWeight.bold : FontWeight.w500,
@@ -380,7 +384,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              'Only listed apps are blocked',
+                              strings.listStandardModeDesc,
                               style: TextStyle(
                                 color: colors.textMuted,
                                 fontSize: 10,
@@ -435,7 +439,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Phone-Wide Ban',
+                                  strings.listPhoneWideModeTitle,
                                   style: TextStyle(
                                     color: _isPhoneWideBan ? colors.text : colors.textSecondary,
                                     fontWeight: _isPhoneWideBan ? FontWeight.bold : FontWeight.w500,
@@ -446,7 +450,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              'All apps blocked except these',
+                              strings.listPhoneWideModeDesc,
                               style: TextStyle(
                                 color: colors.textMuted,
                                 fontSize: 10,
@@ -469,8 +473,8 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
               children: [
                 Text(
                   _isPhoneWideBan
-                      ? 'EXCLUDED / ALLOWED APPS (${_selectedApps.length} selected)'
-                      : 'APPS TO BLOCK (${_selectedApps.length} selected)',
+                      ? strings.listAppsExcludedHeader(_selectedApps.length)
+                      : strings.listAppsToBlockHeader(_selectedApps.length),
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 11,
@@ -488,7 +492,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                         ),
                         child: Text(
-                          'Select All',
+                          strings.listSelectAll,
                           style: TextStyle(color: colors.accent, fontSize: 12),
                         ),
                       ),
@@ -499,7 +503,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                         ),
                         child: Text(
-                          'Clear',
+                          strings.listClear,
                           style: TextStyle(color: colors.textSecondary, fontSize: 12),
                         ),
                       ),
@@ -515,7 +519,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
               onChanged: (val) => setState(() => _searchQuery = val),
               style: TextStyle(color: colors.text, fontSize: 13),
               decoration: InputDecoration(
-                hintText: 'Search installed apps...',
+                hintText: strings.listSearchAppsHint,
                 hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
                 prefixIcon: Icon(Icons.search, color: colors.textSecondary, size: 20),
                 filled: true,
@@ -537,37 +541,63 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
             // Filter chips
             SizedBox(
               height: 34,
-              child: ListView.separated(
+              child: ListView(
                 scrollDirection: Axis.horizontal,
-                itemCount: filterOptions.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final filter = filterOptions[index];
-                  final isSelected = _selectedFilter == filter;
-                  final label = switch (filter) {
-                    'All' => 'All (${_installedApps.length})',
-                    'Selected' => 'Selected (${_selectedApps.length})',
-                    _ => filter,
-                  };
-
-                  return ChoiceChip(
-                    label: Text(label),
-                    selected: isSelected,
-                    onSelected: (_) => setState(() => _selectedFilter = filter),
+                children: [
+                  ChoiceChip(
+                    label: Text(strings.listFilterAll(_installedApps.length)),
+                    selected: _selectedFilter == _AppFilterType.all,
+                    onSelected: (_) => setState(() => _selectedFilter = _AppFilterType.all),
                     labelStyle: TextStyle(
                       fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? colors.accentText : colors.textSecondary,
+                      fontWeight: _selectedFilter == _AppFilterType.all ? FontWeight.bold : FontWeight.normal,
+                      color: _selectedFilter == _AppFilterType.all ? colors.accentText : colors.textSecondary,
                     ),
                     selectedColor: colors.accent,
                     backgroundColor: colors.background,
                     side: BorderSide(
-                      color: isSelected ? colors.accent : colors.cardBorder,
+                      color: _selectedFilter == _AppFilterType.all ? colors.accent : colors.cardBorder,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     visualDensity: VisualDensity.compact,
-                  );
-                },
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: Text(strings.listFilterUserApps),
+                    selected: _selectedFilter == _AppFilterType.userApps,
+                    onSelected: (_) => setState(() => _selectedFilter = _AppFilterType.userApps),
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: _selectedFilter == _AppFilterType.userApps ? FontWeight.bold : FontWeight.normal,
+                      color: _selectedFilter == _AppFilterType.userApps ? colors.accentText : colors.textSecondary,
+                    ),
+                    selectedColor: colors.accent,
+                    backgroundColor: colors.background,
+                    side: BorderSide(
+                      color: _selectedFilter == _AppFilterType.userApps ? colors.accent : colors.cardBorder,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: Text(strings.listFilterSelected(_selectedApps.length)),
+                    selected: _selectedFilter == _AppFilterType.selected,
+                    onSelected: (_) => setState(() => _selectedFilter = _AppFilterType.selected),
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: _selectedFilter == _AppFilterType.selected ? FontWeight.bold : FontWeight.normal,
+                      color: _selectedFilter == _AppFilterType.selected ? colors.accentText : colors.textSecondary,
+                    ),
+                    selectedColor: colors.accent,
+                    backgroundColor: colors.background,
+                    side: BorderSide(
+                      color: _selectedFilter == _AppFilterType.selected ? colors.accent : colors.cardBorder,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
@@ -589,7 +619,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Pulling installed apps from phone...',
+                            strings.listPullingApps,
                             style: TextStyle(
                               color: colors.textSecondary,
                               fontSize: 13,
@@ -610,7 +640,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'No matching apps found',
+                                strings.listNoMatchingApps,
                                 style: TextStyle(
                                   color: colors.textSecondary,
                                   fontSize: 14,
@@ -651,7 +681,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                                           fontSize: 13,
                                         ),
                                         decoration: InputDecoration(
-                                          hintText: 'Add custom app name...',
+                                          hintText: strings.listAddCustomAppHint,
                                           hintStyle: TextStyle(
                                             color: colors.textMuted,
                                             fontSize: 13,
@@ -668,7 +698,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                                         visualDensity: VisualDensity.compact,
                                       ),
                                       child: Text(
-                                        'Add',
+                                        strings.listAddButton,
                                         style: TextStyle(
                                           color: colors.accent,
                                           fontWeight: FontWeight.bold,
@@ -698,7 +728,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: _saveList,
+                onPressed: () => _saveList(strings),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.accent,
                   foregroundColor: colors.accentText,
@@ -712,7 +742,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
                   size: 20,
                 ),
                 label: Text(
-                  isEditing ? 'Save Changes' : 'Create List',
+                  isEditing ? strings.listSaveChanges : strings.listCreateList,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

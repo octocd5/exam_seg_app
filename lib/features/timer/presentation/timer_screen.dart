@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
 import '../../activity/controllers/activity_controller.dart';
 import '../../activity/models/activity_session.dart';
@@ -87,15 +89,15 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     }
   }
 
-  Future<void> _requestBlockerPermissions() async {
+  Future<void> _requestBlockerPermissions(AppStrings strings) async {
     final granted = await BlockerChannel.requestPermissions();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           granted
-              ? 'Lock / overlay permissions active!'
-              : 'Permission not granted or not supported on this device.',
+              ? strings.timerPermissionsActive
+              : strings.timerPermissionsDenied,
           style: TextStyle(
             color: granted ? kTimerStandbyButtonTextColor : Colors.white,
             fontWeight: FontWeight.bold,
@@ -130,6 +132,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     });
 
     final timerState = ref.watch(timerControllerProvider);
+    final strings = ref.watch(appStringsProvider);
     final isTimerActive =
         timerState.status == TimerStatus.running ||
         timerState.status == TimerStatus.verifying;
@@ -167,10 +170,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           iconTheme: IconThemeData(color: currentTextColor),
           actions: [
             IconButton(
-              tooltip: 'Request Lock Permissions',
+              tooltip: strings.timerRequestPermissionsTooltip,
               icon: const Icon(Icons.shield_outlined),
               color: currentTextColor,
-              onPressed: _requestBlockerPermissions,
+              onPressed: () => _requestBlockerPermissions(strings),
             ),
           ],
         ),
@@ -294,8 +297,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
               const SizedBox(width: 8),
               Text(
                 state.status == TimerStatus.running
-                    ? 'TRACKING TIME'
-                    : 'VERIFICATION PENDING',
+                    ? ref.watch(appStringsProvider).timerTrackingTime
+                    : ref.watch(appStringsProvider).timerVerificationPending,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -391,9 +394,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                     size: 15,
                   ),
                   const SizedBox(width: 6),
-                  const Text(
-                    "TODAY'S FOCUS TIME",
-                    style: TextStyle(
+                  Text(
+                    ref.watch(appStringsProvider).timerTodaysFocusTime,
+                    style: const TextStyle(
                       color: kTimerStandbyButtonColor,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -429,6 +432,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
   Widget _buildActionButtons(TimerState state) {
     final notifier = ref.read(timerControllerProvider.notifier);
+    final strings = ref.watch(appStringsProvider);
 
     // Active Mode: Running
     if (state.status == TimerStatus.running) {
@@ -446,9 +450,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           ),
           onPressed: _handleStopRequest,
           icon: const Icon(Icons.camera_alt_outlined),
-          label: const Text(
-            'Stop (Scan Object to Unlock)',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          label: Text(
+            strings.timerStopAndScan,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
         ),
       );
@@ -481,7 +485,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           },
           icon: const Icon(Icons.camera_alt),
           label: Text(
-            'Photograph "${state.targetObject}"',
+            strings.timerPhotographObject(state.targetObject ?? ''),
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
         ),
@@ -490,25 +494,25 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
     // Standby Mode (first boot and returned standby)
     return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: kTimerStandbyButtonColor,
-          foregroundColor: kTimerStandbyButtonTextColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: kTimerStandbyButtonColor,
+            foregroundColor: kTimerStandbyButtonTextColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 4,
           ),
-          elevation: 4,
+          onPressed: () => notifier.startTimer(),
+          icon: const Icon(Icons.play_arrow_rounded, size: 26),
+          label: Text(
+            strings.timerStartChronometer,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ),
-        onPressed: () => notifier.startTimer(),
-        icon: const Icon(Icons.play_arrow_rounded, size: 26),
-        label: const Text(
-          'Start Chronometer',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
+      );
   }
 }
 

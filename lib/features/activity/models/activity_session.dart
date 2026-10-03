@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 class ActivitySession {
   final String id;
   final String title;
@@ -148,6 +150,16 @@ class DailyActivityGroup {
     return weekdays[date.weekday - 1];
   }
 
+  String localizedDayLabel(AppStrings strings) {
+    if (isToday) return strings.activityToday;
+    if (isYesterday) return strings.activityYesterday;
+    if (strings is EsAppStrings) {
+      const esWeekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+      return esWeekdays[date.weekday - 1];
+    }
+    return dayLabel;
+  }
+
   String get formattedDate {
     const months = [
       'Jan',
@@ -164,6 +176,27 @@ class DailyActivityGroup {
       'Dec'
     ];
     return '${months[date.month - 1]} ${date.day}';
+  }
+
+  String localizedFormattedDate(AppStrings strings) {
+    if (strings is EsAppStrings) {
+      const esMonths = [
+        'Ene',
+        'Feb',
+        'Mar',
+        'Abr',
+        'May',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dic'
+      ];
+      return '${date.day} ${esMonths[date.month - 1]}';
+    }
+    return formattedDate;
   }
 
   String get formattedTotalDuration {

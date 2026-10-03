@@ -4,9 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../../timer/controllers/timer_controller.dart';
 import '../controllers/vision_controller.dart';
-import '../../../core/constants/app_colors.dart';
+
+enum _CameraErrorType {
+  permissionDenied,
+  noCamera,
+  initFailed,
+  analyzeFailed,
+}
 
 class CameraVerificationScreen extends ConsumerStatefulWidget {
   final String targetObject;
@@ -29,7 +38,8 @@ class _CameraVerificationScreenState
   bool _isCameraInitialized = false;
   bool _isProcessing = false;
   bool _isSuccess = false;
-  String? _errorMessage;
+  _CameraErrorType? _errorType;
+  String? _errorDetails;
   VerificationResult? _lastResult;
 
   @override
@@ -43,8 +53,7 @@ class _CameraVerificationScreenState
     if (!status.isGranted) {
       if (mounted) {
         setState(() {
-          _errorMessage =
-              'Camera permission is required to verify objects and unlock your phone.';
+          _errorType = _CameraErrorType.permissionDenied;
         });
       }
       return;
@@ -55,7 +64,7 @@ class _CameraVerificationScreenState
       if (cameras.isEmpty) {
         if (mounted) {
           setState(() {
-            _errorMessage = 'No camera found on this device.';
+            _errorType = _CameraErrorType.noCamera;
           });
         }
         return;
@@ -77,7 +86,8 @@ class _CameraVerificationScreenState
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Failed to initialize camera: $e';
+          _errorType = _CameraErrorType.initFailed;
+          _errorDetails = e.toString();
         });
       }
     }
@@ -138,7 +148,8 @@ class _CameraVerificationScreenState
       if (mounted) {
         setState(() {
           _isProcessing = false;
-          _errorMessage = 'Error analyzing picture: $e';
+          _errorType = _CameraErrorType.analyzeFailed;
+          _errorDetails = e.toString();
         });
       }
     }
@@ -177,8 +188,20 @@ class _CameraVerificationScreenState
     super.dispose();
   }
 
+  String _resolveErrorMessage(AppStrings strings) {
+    return switch (_errorType) {
+      _CameraErrorType.permissionDenied => strings.cameraPermissionRequired,
+      _CameraErrorType.noCamera => strings.cameraNotFound,
+      _CameraErrorType.initFailed => strings.cameraInitFailed(_errorDetails ?? ''),
+      _CameraErrorType.analyzeFailed => strings.cameraAnalyzingError(_errorDetails ?? ''),
+      null => '',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(appStringsProvider);
+
     return Scaffold(
       backgroundColor: kTimerStandbyBackgroundColor,
       appBar: AppBar(
@@ -189,25 +212,25 @@ class _CameraVerificationScreenState
       body: SafeArea(
         child: Column(
           children: [
-            _buildChallengeBanner(),
+            _buildChallengeBanner(strings),
             Expanded(
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  _buildCameraView(),
-                  if (_isSuccess) _buildSuccessOverlay(),
-                  if (_isProcessing) _buildProcessingOverlay(),
+                  _buildCameraView(strings),
+                  if (_isSuccess) _buildSuccessOverlay(strings),
+                  if (_isProcessing) _buildProcessingOverlay(strings),
                 ],
               ),
             ),
-            _buildBottomControls(),
+            _buildBottomControls(strings),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChallengeBanner() {
+  Widget _buildChallengeBanner(AppStrings strings) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -223,7 +246,7 @@ class _CameraVerificationScreenState
       child: Column(
         children: [
           Text(
-            'To unlock your phone and stop the timer:',
+            strings.cameraUnlockInstructions,
             style: TextStyle(
               fontSize: 13,
               color: kTimerStandbyTextColor.withValues(alpha: 0.65),
@@ -233,9 +256,9 @@ class _CameraVerificationScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                'Take a picture of: ',
-                style: TextStyle(
+              Text(
+                strings.cameraTakePicOf,
+                style: const TextStyle(
                   fontSize: 15,
                   color: kTimerStandbyTextColor,
                   fontWeight: FontWeight.w500,
@@ -252,7 +275,7 @@ class _CameraVerificationScreenState
                   ),
                 ),
                 child: Text(
-                  widget.targetObject,
+                  strings.translateObject(widget.targetObject),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -267,8 +290,8 @@ class _CameraVerificationScreenState
     );
   }
 
-  Widget _buildCameraView() {
-    if (_errorMessage != null) {
+  Widget _buildCameraView(AppStrings strings) {
+    if (_errorType != null) {
       return Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -281,7 +304,7 @@ class _CameraVerificationScreenState
             ),
             const SizedBox(height: 16),
             Text(
-              _errorMessage!,
+              _resolveErrorMessage(strings),
               textAlign: TextAlign.center,
               style: const TextStyle(color: kTimerStandbyTextColor, fontSize: 15),
             ),
@@ -295,15 +318,15 @@ class _CameraVerificationScreenState
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Open App Settings'),
+              child: Text(strings.cameraOpenSettings),
             ),
             const SizedBox(height: 16),
             TextButton.icon(
               onPressed: _simulateVerification,
               icon: const Icon(Icons.bug_report, color: kTimerStandbyButtonColor),
-              label: const Text(
-                'Simulate Scan (Testing)',
-                style: TextStyle(color: kTimerStandbyButtonColor),
+              label: Text(
+                strings.cameraSimulateScan,
+                style: const TextStyle(color: kTimerStandbyButtonColor),
               ),
             ),
           ],
@@ -346,18 +369,18 @@ class _CameraVerificationScreenState
     );
   }
 
-  Widget _buildProcessingOverlay() {
+  Widget _buildProcessingOverlay(AppStrings strings) {
     return Container(
       color: kTimerStandbyBackgroundColor.withValues(alpha: 0.75),
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: kTimerStandbyButtonColor),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(color: kTimerStandbyButtonColor),
+            const SizedBox(height: 16),
             Text(
-              'Analyzing with ML Kit...',
-              style: TextStyle(
+              strings.cameraAnalyzing,
+              style: const TextStyle(
                 color: kTimerStandbyTextColor,
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -369,7 +392,9 @@ class _CameraVerificationScreenState
     );
   }
 
-  Widget _buildSuccessOverlay() {
+  Widget _buildSuccessOverlay(AppStrings strings) {
+    final matched = strings.translateObject(_lastResult?.matchedLabel ?? widget.targetObject);
+
     return Container(
       color: kTimerStandbyBackgroundColor.withValues(alpha: 0.90),
       child: Center(
@@ -383,7 +408,7 @@ class _CameraVerificationScreenState
             ),
             const SizedBox(height: 16),
             Text(
-              'Verified: ${_lastResult?.matchedLabel ?? widget.targetObject}!',
+              strings.cameraVerified(matched),
               style: const TextStyle(
                 color: kTimerStandbyTextColor,
                 fontSize: 22,
@@ -393,7 +418,7 @@ class _CameraVerificationScreenState
             if (_lastResult?.confidence != null) ...[
               const SizedBox(height: 6),
               Text(
-                'Confidence: ${((_lastResult!.confidence!) * 100).toStringAsFixed(0)}%',
+                strings.cameraConfidence(((_lastResult!.confidence!) * 100).toInt()),
                 style: const TextStyle(
                   color: kTimerStandbyButtonColor,
                   fontSize: 16,
@@ -402,7 +427,7 @@ class _CameraVerificationScreenState
             ],
             const SizedBox(height: 12),
             Text(
-              'Focus Lock Released 🎉',
+              strings.cameraFocusLockReleased,
               style: TextStyle(
                 color: kTimerStandbyTextColor.withValues(alpha: 0.70),
                 fontSize: 14,
@@ -414,7 +439,7 @@ class _CameraVerificationScreenState
     );
   }
 
-  Widget _buildBottomControls() {
+  Widget _buildBottomControls(AppStrings strings) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: const BoxDecoration(
@@ -441,7 +466,9 @@ class _CameraVerificationScreenState
               child: Column(
                 children: [
                   Text(
-                    'No "${widget.targetObject}" detected.',
+                    strings.cameraNoObjectDetected(
+                      strings.translateObject(widget.targetObject),
+                    ),
                     style: const TextStyle(
                       color: Colors.redAccent,
                       fontWeight: FontWeight.bold,
@@ -450,7 +477,12 @@ class _CameraVerificationScreenState
                   ),
                   if (_lastResult!.detectedLabels.isNotEmpty)
                     Text(
-                      'AI recognized: ${_lastResult!.detectedLabels.take(3).join(', ')}',
+                      strings.cameraAIRecognized(
+                        _lastResult!.detectedLabels
+                            .take(3)
+                            .map((l) => strings.translateObject(l))
+                            .join(', '),
+                      ),
                       style: TextStyle(
                         color: kTimerStandbyTextColor.withValues(alpha: 0.7),
                         fontSize: 12,
@@ -469,7 +501,7 @@ class _CameraVerificationScreenState
                   Icons.arrow_back,
                   color: kTimerStandbyTextColor.withValues(alpha: 0.75),
                 ),
-                tooltip: 'Back to Timer',
+                tooltip: strings.cameraBackTooltip,
                 onPressed: () => Navigator.of(context).pop(),
               ),
               GestureDetector(
@@ -495,7 +527,7 @@ class _CameraVerificationScreenState
                   Icons.check_circle_outline,
                   color: kTimerStandbyTextColor.withValues(alpha: 0.40),
                 ),
-                tooltip: 'Simulate Valid Scan (Testing)',
+                tooltip: strings.cameraSimulateValidScanTooltip,
                 onPressed: _simulateVerification,
               ),
             ],

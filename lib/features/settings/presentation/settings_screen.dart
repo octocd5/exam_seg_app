@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/verifiable_objects.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
 import '../../timer/controllers/timer_controller.dart';
 
@@ -26,14 +28,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _checkPermissions() async {
-    // Quick test / check
     final granted = await BlockerChannel.requestPermissions();
     if (mounted) {
       setState(() => _permissionsActive = granted);
     }
   }
 
-  Future<void> _requestPermissions() async {
+  Future<void> _requestPermissions(AppStrings strings) async {
     final granted = await BlockerChannel.requestPermissions();
     if (!mounted) return;
     setState(() => _permissionsActive = granted);
@@ -41,8 +42,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       SnackBar(
         content: Text(
           granted
-              ? 'Lock permissions granted and active!'
-              : 'Permission not granted. Please allow in Android system settings.',
+              ? strings.settingsPermissionsActiveSubtitle
+              : strings.settingsPermissionsInactiveSubtitle,
           style: TextStyle(
             color: granted ? kTimerStandbyButtonTextColor : Colors.white,
           ),
@@ -53,7 +54,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showObjectsCatalog(AppThemeColors colors) {
+  void _showLanguageSelector(
+    BuildContext context,
+    WidgetRef ref,
+    AppThemeColors colors,
+    AppStrings strings,
+    Locale? currentLocale,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: colors.cardBackground,
@@ -71,7 +78,93 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Verifiable Target Objects',
+                    strings.settingsAppLanguage,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: colors.text,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: colors.textSecondary),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.phone_android_rounded, color: colors.accent),
+                title: Text(
+                  strings.settingsLanguageSystem,
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
+                ),
+                trailing: currentLocale == null
+                    ? Icon(Icons.check_circle_rounded, color: colors.accent)
+                    : null,
+                onTap: () {
+                  ref.read(localeControllerProvider.notifier).setLocale(null);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              Divider(color: colors.cardBorder),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Text('🇺🇸', style: TextStyle(fontSize: 22)),
+                title: Text(
+                  strings.settingsLanguageEnglish,
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
+                ),
+                trailing: currentLocale?.languageCode == 'en'
+                    ? Icon(Icons.check_circle_rounded, color: colors.accent)
+                    : null,
+                onTap: () {
+                  ref.read(localeControllerProvider.notifier).setLocale(const Locale('en'));
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              Divider(color: colors.cardBorder),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Text('🇪🇸', style: TextStyle(fontSize: 22)),
+                title: Text(
+                  strings.settingsLanguageSpanish,
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
+                ),
+                trailing: currentLocale?.languageCode == 'es'
+                    ? Icon(Icons.check_circle_rounded, color: colors.accent)
+                    : null,
+                onTap: () {
+                  ref.read(localeControllerProvider.notifier).setLocale(const Locale('es'));
+                  Navigator.of(ctx).pop();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showObjectsCatalog(AppThemeColors colors, AppStrings strings) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    strings.settingsCatalogTitle,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -86,7 +179,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'When you want to stop a session, Focus Guard randomly assigns one of these real-world items for you to photograph:',
+                strings.settingsCatalogDesc,
                 style: TextStyle(color: colors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -99,7 +192,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     side: BorderSide(color: colors.cardBorder),
                     avatar: Icon(Icons.check_circle, size: 16, color: colors.accent),
                     label: Text(
-                      obj,
+                      strings.translateObject(obj),
                       style: TextStyle(color: colors.text, fontSize: 12),
                     ),
                   );
@@ -118,6 +211,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final timerState = ref.watch(timerControllerProvider);
     final isTimerActive = timerState.status == TimerStatus.running;
     final colors = AppThemeColors(isTimerActive);
+    final strings = ref.watch(appStringsProvider);
+    final currentLocale = ref.watch(localeControllerProvider);
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -129,7 +224,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           children: [
-            _buildSectionHeader('LOCK & ANTI-CHEATING', colors),
+            // LANGUAGE SELECTION
+            _buildSectionHeader(strings.settingsLanguageSection, colors),
+            _buildSettingsCard(colors, [
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colors.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.language_rounded, color: colors.accent),
+                ),
+                title: Text(
+                  strings.settingsAppLanguage,
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  currentLocale == null
+                      ? strings.settingsLanguageSystem
+                      : (currentLocale.languageCode == 'es'
+                          ? strings.settingsLanguageSpanish
+                          : strings.settingsLanguageEnglish),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                ),
+                trailing: Icon(Icons.chevron_right, color: colors.textMuted),
+                onTap: () => _showLanguageSelector(context, ref, colors, strings, currentLocale),
+              ),
+            ]),
+            const SizedBox(height: 24),
+
+            _buildSectionHeader(strings.settingsLockSection, colors),
             _buildSettingsCard(colors, [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -152,22 +278,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 title: Text(
-                  'Blocker Permissions',
+                  strings.settingsBlockerPermissions,
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   _permissionsActive == true
-                      ? 'System overlay & usage access permissions active'
-                      : 'Overlay & usage access required for app blocking',
+                      ? strings.settingsPermissionsActiveSubtitle
+                      : strings.settingsPermissionsInactiveSubtitle,
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 12,
                   ),
                 ),
                 trailing: TextButton(
-                  onPressed: _requestPermissions,
+                  onPressed: () => _requestPermissions(strings),
                   child: Text(
-                    _permissionsActive == true ? 'Check' : 'Grant',
+                    _permissionsActive == true ? strings.settingsCheck : strings.settingsGrant,
                     style: TextStyle(
                       color: colors.accent,
                       fontWeight: FontWeight.bold,
@@ -181,11 +307,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 activeThumbColor: colors.accent,
                 activeTrackColor: colors.accent.withValues(alpha: 0.4),
                 title: Text(
-                  'Distraction Overlay Blocker',
+                  strings.settingsDistractionOverlay,
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  'Display blocking overlay over restricted apps instead of screen pinning',
+                  strings.settingsDistractionOverlaySubtitle,
                   style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 value: _strictLockMode,
@@ -193,7 +319,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ]),
             const SizedBox(height: 24),
-            _buildSectionHeader('CAMERA & VISION VERIFICATION', colors),
+            _buildSectionHeader(strings.settingsCameraSection, colors),
             _buildSettingsCard(colors, [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -206,15 +332,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Icon(Icons.qr_code_scanner, color: colors.accent),
                 ),
                 title: Text(
-                  'Recognizable Objects',
+                  strings.settingsRecognizableObjects,
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  '${targetObjects.length} everyday items configured for photo unlock',
+                  strings.settingsItemsConfiguredSubtitle(targetObjects.length),
                   style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 trailing: Icon(Icons.chevron_right, color: colors.textMuted),
-                onTap: () => _showObjectsCatalog(colors),
+                onTap: () => _showObjectsCatalog(colors, strings),
               ),
               Divider(color: colors.cardBorder, height: 1),
               Padding(
@@ -226,7 +352,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'AI Confidence Threshold',
+                          strings.settingsConfidenceThreshold,
                           style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                         ),
                         Text(
@@ -240,7 +366,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Higher values require clearer, closer photos of the target object',
+                      strings.settingsConfidenceSubtitle,
                       style: TextStyle(color: colors.textSecondary, fontSize: 12),
                     ),
                     Slider(
@@ -257,18 +383,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ]),
             const SizedBox(height: 24),
-            _buildSectionHeader('SOUNDS & FEEDBACK', colors),
+            _buildSectionHeader(strings.settingsSoundsSection, colors),
             _buildSettingsCard(colors, [
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 activeThumbColor: colors.accent,
                 activeTrackColor: colors.accent.withValues(alpha: 0.4),
                 title: Text(
-                  'Audio Cues',
+                  strings.settingsAudioCues,
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  'Play chime on session start and unlock',
+                  strings.settingsAudioCuesSubtitle,
                   style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 value: _soundEnabled,
@@ -280,11 +406,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 activeThumbColor: colors.accent,
                 activeTrackColor: colors.accent.withValues(alpha: 0.4),
                 title: Text(
-                  'Haptic Vibration',
+                  strings.settingsHaptic,
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  'Vibrate on camera object detection confirmation',
+                  strings.settingsHapticSubtitle,
                   style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 value: _hapticEnabled,
@@ -292,17 +418,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ]),
             const SizedBox(height: 24),
-            _buildSectionHeader('ABOUT', colors),
+            _buildSectionHeader(strings.settingsAboutSection, colors),
             _buildSettingsCard(colors, [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: Icon(Icons.info_outline, color: colors.textSecondary),
                 title: Text(
-                  'Focus Guard App',
+                  strings.settingsAboutTitle,
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  'Version 1.0.0 • On-Device ML Kit Vision',
+                  strings.settingsAboutSubtitle,
                   style: TextStyle(color: colors.textMuted, fontSize: 12),
                 ),
               ),

@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 class AppBlockList {
   final String id;
   final String name;
@@ -37,8 +39,31 @@ class AppBlockList {
     }
   }
 
+  String localizedBlockedSummary(AppStrings strings) {
+    if (isPhoneWideBan) {
+      if (appNames.isEmpty) {
+        return strings.listPhoneWideAllBlocked;
+      } else if (appNames.length == 1) {
+        return strings.listPhoneWideSingleAllowed;
+      } else {
+        return strings.listPhoneWideMultipleAllowed(appNames.length);
+      }
+    } else {
+      if (appNames.isEmpty) {
+        return strings.listStandardNoneBlocked;
+      } else if (appNames.length == 1) {
+        return strings.listStandardSingleBlocked;
+      } else {
+        return strings.listStandardMultipleBlocked(appNames.length);
+      }
+    }
+  }
+
   String get modeTitle =>
       isPhoneWideBan ? 'Phone-Wide Ban' : 'Blocklist';
+
+  String localizedModeTitle(AppStrings strings) =>
+      isPhoneWideBan ? strings.manageListsPhoneWideBadge : strings.manageListsBlocklistBadge;
 
   AppBlockList copyWith({
     String? id,

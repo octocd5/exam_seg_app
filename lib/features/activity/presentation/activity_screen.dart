@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../../timer/controllers/timer_controller.dart';
 import '../controllers/activity_controller.dart';
 import '../models/activity_session.dart';
@@ -59,6 +61,8 @@ class ActivityScreen extends ConsumerWidget {
     final double weeklyAvgHours =
         dailyGroups.isEmpty ? 0 : (weeklyTotalSeconds / 3600.0) / 7.0;
 
+    final strings = ref.watch(appStringsProvider);
+
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
@@ -69,7 +73,7 @@ class ActivityScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Activity Info',
             icon: Icon(Icons.info_outline, color: colors.textSecondary),
-            onPressed: () => _showInfoDialog(context, colors),
+            onPressed: () => _showInfoDialog(context, colors, strings),
           ),
         ],
       ),
@@ -95,16 +99,17 @@ class ActivityScreen extends ConsumerWidget {
                     children: [
                       // Active tracking alert banner if timer is running
                       if (isTimerActive) ...[
-                        _buildLiveActiveBanner(timerState, colors),
+                        _buildLiveActiveBanner(timerState, colors, strings),
                         const SizedBox(height: 16),
                       ],
 
-                      _buildDateHeader(colors),
+                      _buildDateHeader(colors, strings),
                       const SizedBox(height: 16),
 
                       // Metrics summary cards
                       _buildMetricsGrid(
                         colors: colors,
+                        strings: strings,
                         todaySeconds: todaySeconds,
                         todaySessionsCount: todaySessionsCount,
                         weeklyTotalSeconds: weeklyTotalSeconds,
@@ -114,14 +119,14 @@ class ActivityScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
 
                       // 7-day visual bar chart
-                      _buildWeeklyBarSection(dailyGroups, isTimerActive, colors),
+                      _buildWeeklyBarSection(dailyGroups, isTimerActive, colors, strings),
                       const SizedBox(height: 28),
 
                       // Day-by-Day Activity Feed (divided by each day)
-                      _buildDailyFeedHeader(colors),
+                      _buildDailyFeedHeader(colors, strings),
                       const SizedBox(height: 14),
 
-                      _buildDailyGroupsList(dailyGroups, colors),
+                      _buildDailyGroupsList(dailyGroups, colors, strings),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -131,7 +136,7 @@ class ActivityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDateHeader(AppThemeColors colors) {
+  Widget _buildDateHeader(AppThemeColors colors, AppStrings strings) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -145,7 +150,7 @@ class ActivityScreen extends ConsumerWidget {
           Icon(Icons.calendar_today, color: colors.accent, size: 16),
           const SizedBox(width: 8),
           Text(
-            'Daily Activity Log • Real-time Tracking',
+            strings.activityHeaderBadge,
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 13,
@@ -157,7 +162,7 @@ class ActivityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLiveActiveBanner(TimerState timerState, AppThemeColors colors) {
+  Widget _buildLiveActiveBanner(TimerState timerState, AppThemeColors colors, AppStrings strings) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -201,7 +206,7 @@ class ActivityScreen extends ConsumerWidget {
                 Row(
                   children: [
                     Text(
-                      'TIMER ACTIVELY TRACKING',
+                      strings.activityTimerActivelyTracking,
                       style: TextStyle(
                         color: colors.accent,
                         fontWeight: FontWeight.bold,
@@ -215,7 +220,7 @@ class ActivityScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Current session: ${timerState.formattedElapsed}',
+                  strings.activityCurrentSession(timerState.formattedElapsed),
                   style: TextStyle(
                     color: colors.text,
                     fontWeight: FontWeight.bold,
@@ -224,7 +229,7 @@ class ActivityScreen extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'Actively logging into Today\'s activity tally',
+                  strings.activityLoggingIntoToday,
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 11,
@@ -240,6 +245,7 @@ class ActivityScreen extends ConsumerWidget {
 
   Widget _buildMetricsGrid({
     required AppThemeColors colors,
+    required AppStrings strings,
     required int todaySeconds,
     required int todaySessionsCount,
     required int weeklyTotalSeconds,
@@ -258,34 +264,34 @@ class ActivityScreen extends ConsumerWidget {
       childAspectRatio: 1.45,
       children: [
         _MetricCard(
-          title: 'Today\'s Focus',
+          title: strings.activityTodaysFocus,
           value: todayFormatted,
-          subtext: isLiveActive ? 'Tracking actively now' : 'Logged today',
+          subtext: isLiveActive ? strings.activityTrackingActively : strings.activityLoggedToday,
           icon: Icons.access_time_filled,
           color: colors.accent,
           colors: colors,
           showActivePulse: isLiveActive,
         ),
         _MetricCard(
-          title: 'Today\'s Sessions',
+          title: strings.activityTodaysSessions,
           value: '$todaySessionsCount',
-          subtext: todaySessionsCount == 1 ? '1 block recorded' : 'Blocks recorded',
+          subtext: todaySessionsCount == 1 ? strings.activitySingleBlock : strings.activityMultipleBlocks,
           icon: Icons.check_circle_outline,
           color: const Color(0xFF6366F1),
           colors: colors,
         ),
         _MetricCard(
-          title: 'This Week Total',
+          title: strings.activityThisWeekTotal,
           value: weeklyFormatted,
-          subtext: 'Across last 7 days',
+          subtext: strings.activityAcrossLast7Days,
           icon: Icons.stacked_bar_chart,
           color: kTimerStandbyButtonColor,
           colors: colors,
         ),
         _MetricCard(
-          title: 'Daily Average',
+          title: strings.activityDailyAverage,
           value: '${weeklyAvgHours.toStringAsFixed(1)}h',
-          subtext: '7-day daily average',
+          subtext: strings.activity7DayDailyAvg,
           icon: Icons.insights_rounded,
           color: const Color(0xFF06B6D4),
           colors: colors,
@@ -298,6 +304,7 @@ class ActivityScreen extends ConsumerWidget {
     List<DailyActivityGroup> dailyGroups,
     bool isLiveActive,
     AppThemeColors colors,
+    AppStrings strings,
   ) {
     // Generate the last 7 days in chronological order (oldest to today)
     final now = DateTime.now();
@@ -325,7 +332,7 @@ class ActivityScreen extends ConsumerWidget {
       }
 
       barDays.add({
-        'day': group.dayLabel,
+        'day': group.localizedDayLabel(strings),
         'date': '${group.date.month}/${group.date.day}',
         'hours': hours,
         'isToday': group.isToday,
@@ -346,7 +353,7 @@ class ActivityScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '7-Day Focus Distribution',
+                strings.activityChartTitle,
                 style: TextStyle(
                   color: colors.text,
                   fontWeight: FontWeight.bold,
@@ -361,7 +368,7 @@ class ActivityScreen extends ConsumerWidget {
                       child: _PulsingDot(color: colors.accent),
                     ),
                   Text(
-                    isLiveActive ? 'Live Today' : 'Divided by day',
+                    isLiveActive ? strings.activityChartLiveToday : strings.activityChartDividedByDay,
                     style: TextStyle(
                       color: colors.accent,
                       fontWeight: FontWeight.w600,
@@ -449,12 +456,12 @@ class ActivityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDailyFeedHeader(AppThemeColors colors) {
+  Widget _buildDailyFeedHeader(AppThemeColors colors, AppStrings strings) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'Daily Activity Breakdown',
+          strings.activityFeedHeader,
           style: TextStyle(
             color: colors.text,
             fontWeight: FontWeight.bold,
@@ -463,7 +470,7 @@ class ActivityScreen extends ConsumerWidget {
           ),
         ),
         Text(
-          'Divided by Day',
+          strings.activityDividedByDaySubtitle,
           style: TextStyle(
             color: colors.textSecondary,
             fontSize: 12,
@@ -474,7 +481,11 @@ class ActivityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDailyGroupsList(List<DailyActivityGroup> dailyGroups, AppThemeColors colors) {
+  Widget _buildDailyGroupsList(
+    List<DailyActivityGroup> dailyGroups,
+    AppThemeColors colors,
+    AppStrings strings,
+  ) {
     if (dailyGroups.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -485,7 +496,7 @@ class ActivityScreen extends ConsumerWidget {
           border: Border.all(color: colors.cardBorder),
         ),
         child: Text(
-          'No activity recorded yet.\nStart the chronometer on the Timer tab to track focus time!',
+          strings.activityEmptyState,
           textAlign: TextAlign.center,
           style: TextStyle(color: colors.textSecondary, height: 1.5),
         ),
@@ -499,30 +510,29 @@ class ActivityScreen extends ConsumerWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 18),
       itemBuilder: (context, index) {
         final group = dailyGroups[index];
-        return _DailyGroupCard(group: group, colors: colors);
+        return _DailyGroupCard(group: group, colors: colors, strings: strings);
       },
     );
   }
 
-  void _showInfoDialog(BuildContext context, AppThemeColors colors) {
+  void _showInfoDialog(BuildContext context, AppThemeColors colors, AppStrings strings) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: colors.cardBackground,
         title: Text(
-          'About Focus Activity',
+          strings.activityAboutDialogTitle,
           style: TextStyle(color: colors.text),
         ),
         content: Text(
-          'This screen actively logs the duration whenever the Focus Chronometer is running.\n\n'
-          'All focus time is automatically divided by each calendar day, so you can inspect your exact study patterns and verify unlock history day by day.',
+          strings.activityAboutDialogContent,
           style: TextStyle(color: colors.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
-              'Got It',
+              strings.activityGotIt,
               style: TextStyle(color: colors.accent, fontWeight: FontWeight.bold),
             ),
           ),
@@ -548,10 +558,12 @@ class ActivityScreen extends ConsumerWidget {
 class _DailyGroupCard extends StatelessWidget {
   final DailyActivityGroup group;
   final AppThemeColors colors;
+  final AppStrings strings;
 
   const _DailyGroupCard({
     required this.group,
     required this.colors,
+    required this.strings,
   });
 
   @override
@@ -608,7 +620,7 @@ class _DailyGroupCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        group.dayLabel,
+                        group.localizedDayLabel(strings),
                         style: TextStyle(
                           color: isToday ? colors.accentText : colors.text,
                           fontWeight: FontWeight.bold,
@@ -618,7 +630,7 @@ class _DailyGroupCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      group.formattedDate,
+                      group.localizedFormattedDate(strings),
                       style: TextStyle(
                         color: colors.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -669,7 +681,7 @@ class _DailyGroupCard extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Text(
-                  'No sessions recorded yet for ${group.dayLabel.toLowerCase()}.',
+                  strings.activityNoSessionsForDay(group.localizedDayLabel(strings).toLowerCase()),
                   style: TextStyle(
                     color: colors.textMuted,
                     fontSize: 12,
@@ -687,7 +699,7 @@ class _DailyGroupCard extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, sIndex) {
                 final session = group.sessions[sIndex];
-                return _SessionTile(session: session, colors: colors);
+                return _SessionTile(session: session, colors: colors, strings: strings);
               },
             ),
         ],
@@ -699,10 +711,12 @@ class _DailyGroupCard extends StatelessWidget {
 class _SessionTile extends StatelessWidget {
   final ActivitySession session;
   final AppThemeColors colors;
+  final AppStrings strings;
 
   const _SessionTile({
     required this.session,
     required this.colors,
+    required this.strings,
   });
 
   @override
@@ -772,7 +786,7 @@ class _SessionTile extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          'ACTIVE NOW',
+                          strings.activityActiveNow,
                           style: TextStyle(
                             color: colors.accentText,
                             fontSize: 9,
@@ -785,7 +799,7 @@ class _SessionTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${session.formattedTimeRange}${session.targetObject != null ? ' • Unlocked: ${session.targetObject}' : ''}',
+                  '${session.formattedTimeRange}${session.targetObject != null ? ' • ${strings.activityUnlockedVia(strings.translateObject(session.targetObject!))}' : ''}',
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 11,
@@ -810,7 +824,11 @@ class _SessionTile extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                session.strikes == 0 ? 'Clean' : '${session.strikes} strike',
+                session.strikes == 0
+                    ? strings.activityCleanFinish
+                    : (session.strikes == 1
+                        ? strings.activitySingleStrike
+                        : strings.activityMultipleStrikes(session.strikes)),
                 style: TextStyle(
                   color: session.strikes == 0
                       ? colors.accent

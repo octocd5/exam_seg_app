@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../controllers/lists_controller.dart';
 import '../models/app_block_list.dart';
 import '../models/app_catalog.dart';
@@ -30,7 +32,12 @@ class ManageListsSheet extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, AppBlockList list) {
+  void _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    AppBlockList list,
+    AppStrings strings,
+  ) {
     final colors = AppThemeColors(isTimerActive);
     showDialog(
       context: context,
@@ -41,18 +48,18 @@ class ManageListsSheet extends ConsumerWidget {
           side: BorderSide(color: colors.cardBorder),
         ),
         title: Text(
-          'Delete List?',
+          strings.manageListsDeleteTitle,
           style: TextStyle(color: colors.text, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Are you sure you want to delete "${list.name}"?',
+          strings.manageListsDeleteContent(list.name),
           style: TextStyle(color: colors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
             child: Text(
-              'Cancel',
+              strings.schedulesCancel,
               style: TextStyle(color: colors.textSecondary),
             ),
           ),
@@ -66,7 +73,7 @@ class ManageListsSheet extends ConsumerWidget {
               if (success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('List "${list.name}" deleted.'),
+                    content: Text(strings.manageListsDeletedSnackbar(list.name)),
                     backgroundColor: Colors.redAccent,
                   ),
                 );
@@ -76,7 +83,7 @@ class ManageListsSheet extends ConsumerWidget {
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Delete'),
+            child: Text(strings.schedulesDelete),
           ),
         ],
       ),
@@ -86,6 +93,7 @@ class ManageListsSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = AppThemeColors(isTimerActive);
+    final strings = ref.watch(appStringsProvider);
     final listsState = ref.watch(listsControllerProvider);
 
     return Padding(
@@ -128,7 +136,9 @@ class ManageListsSheet extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isTimerActive ? 'Active Block List' : 'Manage Lists',
+                          isTimerActive
+                              ? strings.manageListsActiveTitle
+                              : strings.manageListsTitle,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -137,8 +147,8 @@ class ManageListsSheet extends ConsumerWidget {
                         ),
                         Text(
                           isTimerActive
-                              ? 'View only • Timer is active'
-                              : 'Select or edit block groups',
+                              ? strings.manageListsViewOnlyTimerActive
+                              : strings.manageListsSelectOrEdit,
                           style: TextStyle(
                             fontSize: 12,
                             color: colors.textSecondary,
@@ -176,7 +186,7 @@ class ManageListsSheet extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'LOCKED DURING SESSION',
+                            strings.manageListsLockedSessionHeader,
                             style: TextStyle(
                               color: colors.accent,
                               fontWeight: FontWeight.bold,
@@ -186,7 +196,7 @@ class ManageListsSheet extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Lists cannot be changed or edited while the timer is running. Stop session to modify.',
+                            strings.manageListsLockedSessionDesc,
                             style: TextStyle(
                               color: colors.text,
                               fontSize: 12,
@@ -212,7 +222,7 @@ class ManageListsSheet extends ConsumerWidget {
                       Icon(Icons.playlist_add_rounded, size: 48, color: colors.textMuted),
                       const SizedBox(height: 12),
                       Text(
-                        'No Block Lists Created',
+                        strings.manageListsEmptyTitle,
                         style: TextStyle(
                           color: colors.text,
                           fontSize: 16,
@@ -221,7 +231,7 @@ class ManageListsSheet extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Create your first list to choose which apps to block during focus sessions.',
+                        strings.manageListsEmptySubtitle,
                         textAlign: TextAlign.center,
                         style: TextStyle(color: colors.textSecondary, fontSize: 13),
                       ),
@@ -245,6 +255,7 @@ class ManageListsSheet extends ConsumerWidget {
                       list: list,
                       isActive: isActive,
                       colors: colors,
+                      strings: strings,
                     );
                   },
                 ),
@@ -272,9 +283,9 @@ class ManageListsSheet extends ConsumerWidget {
                     elevation: 2,
                   ),
                   icon: const Icon(Icons.add_rounded, size: 22),
-                  label: const Text(
-                    'Create New List',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  label: Text(
+                    strings.manageListsCreateNewList,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -290,6 +301,7 @@ class ManageListsSheet extends ConsumerWidget {
     required AppBlockList list,
     required bool isActive,
     required AppThemeColors colors,
+    required AppStrings strings,
   }) {
     final canEdit = !isTimerActive;
 
@@ -365,7 +377,9 @@ class ManageListsSheet extends ConsumerWidget {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
-                                    isTimerActive ? 'ACTIVE & LOCKED' : 'ACTIVE',
+                                    isTimerActive
+                                        ? strings.manageListsActiveLockedBadge
+                                        : strings.manageListsActiveBadge,
                                     style: TextStyle(
                                       color: colors.accentText,
                                       fontSize: 10,
@@ -383,7 +397,7 @@ class ManageListsSheet extends ConsumerWidget {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(
-                                list.blockedSummary,
+                                list.localizedBlockedSummary(strings),
                                 style: TextStyle(
                                   color: colors.textSecondary,
                                   fontSize: 12,
@@ -403,7 +417,7 @@ class ManageListsSheet extends ConsumerWidget {
                                   ),
                                 ),
                                 child: Text(
-                                  list.isPhoneWideBan ? 'Phone-Wide Ban' : 'Blocklist',
+                                  list.localizedModeTitle(strings),
                                   style: TextStyle(
                                     color: colors.accent,
                                     fontSize: 9.5,
@@ -420,7 +434,7 @@ class ManageListsSheet extends ConsumerWidget {
                     // Actions if in standby mode
                     if (canEdit) ...[
                       IconButton(
-                        tooltip: 'Edit List',
+                        tooltip: strings.manageListsEditTooltip,
                         icon: Icon(
                           Icons.edit_outlined,
                           size: 20,
@@ -435,13 +449,13 @@ class ManageListsSheet extends ConsumerWidget {
                         },
                       ),
                       IconButton(
-                        tooltip: 'Delete List',
+                        tooltip: strings.manageListsDeleteTooltip,
                         icon: Icon(
                           Icons.delete_outline_rounded,
                           size: 20,
                           color: colors.textMuted,
                         ),
-                        onPressed: () => _confirmDelete(context, ref, list),
+                        onPressed: () => _confirmDelete(context, ref, list, strings),
                       ),
                     ] else if (isActive) ...[
                       // In view/locked mode: Show locked badge
@@ -502,7 +516,7 @@ class ManageListsSheet extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            '+${list.appNames.length - 5} more',
+                            strings.manageListsMoreApps(list.appNames.length - 5),
                             style: TextStyle(
                               color: colors.textMuted,
                               fontSize: 11,

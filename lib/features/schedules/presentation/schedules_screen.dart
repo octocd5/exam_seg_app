@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../../timer/controllers/timer_controller.dart';
 import '../controllers/schedules_controller.dart';
 import '../models/schedule_item.dart';
@@ -12,6 +14,7 @@ class SchedulesScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     AppThemeColors colors,
+    AppStrings strings,
   ) {
     showModalBottomSheet(
       context: context,
@@ -22,9 +25,63 @@ class SchedulesScreen extends ConsumerWidget {
       ),
       builder: (ctx) => _AddScheduleModal(
         colors: colors,
+        strings: strings,
         onSave: (newSchedule) {
           ref.read(schedulesControllerProvider.notifier).addSchedule(newSchedule);
         },
+      ),
+    );
+  }
+
+  void _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    ScheduleItem schedule,
+    AppThemeColors colors,
+    AppStrings strings,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: colors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: colors.cardBorder),
+        ),
+        title: Text(
+          strings.schedulesDeleteTitle,
+          style: TextStyle(color: colors.text, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          strings.schedulesDeleteContent(schedule.title),
+          style: TextStyle(color: colors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(
+              strings.schedulesCancel,
+              style: TextStyle(color: colors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              ref.read(schedulesControllerProvider.notifier).deleteSchedule(schedule.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(strings.schedulesDeletedSnackbar(schedule.title)),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(strings.schedulesDelete),
+          ),
+        ],
       ),
     );
   }
@@ -35,6 +92,7 @@ class SchedulesScreen extends ConsumerWidget {
     final isTimerActive = timerState.status == TimerStatus.running ||
         timerState.status == TimerStatus.verifying;
     final colors = AppThemeColors(isTimerActive);
+    final strings = ref.watch(appStringsProvider);
 
     final state = ref.watch(schedulesControllerProvider);
     final notifier = ref.read(schedulesControllerProvider.notifier);
@@ -47,9 +105,9 @@ class SchedulesScreen extends ConsumerWidget {
         iconTheme: IconThemeData(color: colors.text),
         actions: [
           IconButton(
-            tooltip: 'Add Schedule',
+            tooltip: strings.schedulesAddSchedule,
             icon: Icon(Icons.add_circle_outline, color: colors.accent, size: 28),
-            onPressed: () => _showAddScheduleSheet(context, ref, colors),
+            onPressed: () => _showAddScheduleSheet(context, ref, colors, strings),
           ),
         ],
       ),
@@ -59,13 +117,15 @@ class SchedulesScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoBanner(colors),
+              _buildInfoBanner(colors, strings),
               const SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Active Routines (${state.schedules.where((s) => s.isEnabled).length})',
+                    strings.schedulesActiveRoutines(
+                      state.schedules.where((s) => s.isEnabled).length,
+                    ),
                     style: TextStyle(
                       color: colors.text,
                       fontSize: 16,
@@ -73,10 +133,10 @@ class SchedulesScreen extends ConsumerWidget {
                     ),
                   ),
                   TextButton.icon(
-                    onPressed: () => _showAddScheduleSheet(context, ref, colors),
+                    onPressed: () => _showAddScheduleSheet(context, ref, colors, strings),
                     icon: Icon(Icons.add, size: 18, color: colors.accent),
                     label: Text(
-                      'New Plan',
+                      strings.schedulesNewPlan,
                       style: TextStyle(color: colors.accent, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -85,7 +145,7 @@ class SchedulesScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               Expanded(
                 child: state.schedules.isEmpty
-                    ? _buildEmptyState(context, ref, colors)
+                    ? _buildEmptyState(context, ref, colors, strings)
                     : ListView.separated(
                         itemCount: state.schedules.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -94,8 +154,9 @@ class SchedulesScreen extends ConsumerWidget {
                           return _ScheduleCard(
                             schedule: schedule,
                             colors: colors,
+                            strings: strings,
                             onToggle: () => notifier.toggleSchedule(schedule.id),
-                            onDelete: () => notifier.deleteSchedule(schedule.id),
+                            onDelete: () => _confirmDelete(context, ref, schedule, colors, strings),
                           );
                         },
                       ),
@@ -108,16 +169,16 @@ class SchedulesScreen extends ConsumerWidget {
         backgroundColor: colors.accent,
         foregroundColor: colors.accentText,
         icon: const Icon(Icons.alarm_add_rounded),
-        label: const Text(
-          'Add Schedule',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        label: Text(
+          strings.schedulesAddSchedule,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        onPressed: () => _showAddScheduleSheet(context, ref, colors),
+        onPressed: () => _showAddScheduleSheet(context, ref, colors, strings),
       ),
     );
   }
 
-  Widget _buildInfoBanner(AppThemeColors colors) {
+  Widget _buildInfoBanner(AppThemeColors colors, AppStrings strings) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -132,7 +193,7 @@ class SchedulesScreen extends ConsumerWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Scheduled sessions trigger automated focus locks & reminders so you never miss study time.',
+              strings.schedulesBannerInfo,
               style: TextStyle(
                 color: colors.textSecondary,
                 fontSize: 13,
@@ -145,7 +206,12 @@ class SchedulesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref, AppThemeColors colors) {
+  Widget _buildEmptyState(
+    BuildContext context,
+    WidgetRef ref,
+    AppThemeColors colors,
+    AppStrings strings,
+  ) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -153,12 +219,12 @@ class SchedulesScreen extends ConsumerWidget {
           Icon(Icons.event_busy_rounded, size: 64, color: colors.textMuted),
           const SizedBox(height: 14),
           Text(
-            'No Active Schedules',
+            strings.schedulesEmptyTitle,
             style: TextStyle(color: colors.text, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
           Text(
-            'Create routines to automatically lock distractions during your planned focus hours.',
+            strings.schedulesEmptySubtitle,
             textAlign: TextAlign.center,
             style: TextStyle(color: colors.textSecondary, fontSize: 13),
           ),
@@ -169,9 +235,9 @@ class SchedulesScreen extends ConsumerWidget {
               foregroundColor: colors.accentText,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () => _showAddScheduleSheet(context, ref, colors),
+            onPressed: () => _showAddScheduleSheet(context, ref, colors, strings),
             icon: const Icon(Icons.add),
-            label: const Text('Create First Schedule'),
+            label: Text(strings.schedulesCreateFirst),
           ),
         ],
       ),
@@ -182,12 +248,14 @@ class SchedulesScreen extends ConsumerWidget {
 class _ScheduleCard extends StatelessWidget {
   final ScheduleItem schedule;
   final AppThemeColors colors;
+  final AppStrings strings;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
 
   const _ScheduleCard({
     required this.schedule,
     required this.colors,
+    required this.strings,
     required this.onToggle,
     required this.onDelete,
   });
@@ -231,7 +299,7 @@ class _ScheduleCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '${schedule.durationMinutes} min',
+                        strings.schedulesMinutes(schedule.durationMinutes),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -262,7 +330,7 @@ class _ScheduleCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      schedule.daysSummary,
+                      schedule.localizedDaysSummary(strings),
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.textMuted,
@@ -282,7 +350,7 @@ class _ScheduleCard extends StatelessWidget {
             onChanged: (_) => onToggle(),
           ),
           IconButton(
-            tooltip: 'Delete',
+            tooltip: strings.schedulesDelete,
             icon: Icon(Icons.delete_outline, size: 20, color: colors.textMuted),
             onPressed: onDelete,
           ),
@@ -294,10 +362,12 @@ class _ScheduleCard extends StatelessWidget {
 
 class _AddScheduleModal extends StatefulWidget {
   final AppThemeColors colors;
+  final AppStrings strings;
   final ValueChanged<ScheduleItem> onSave;
 
   const _AddScheduleModal({
     required this.colors,
+    required this.strings,
     required this.onSave,
   });
 
@@ -306,10 +376,16 @@ class _AddScheduleModal extends StatefulWidget {
 }
 
 class _AddScheduleModalState extends State<_AddScheduleModal> {
-  final _titleController = TextEditingController(text: 'Focus Session');
+  late final TextEditingController _titleController;
   TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
   int _selectedDuration = 45;
   final List<int> _selectedDays = [1, 2, 3, 4, 5];
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.strings.schedulesModalTitle);
+  }
 
   @override
   void dispose() {
@@ -375,8 +451,9 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
   @override
   Widget build(BuildContext context) {
     final colors = widget.colors;
+    final strings = widget.strings;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final dayLabels = strings.scheduleDayInitials;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -393,7 +470,7 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'New Focus Schedule',
+                strings.schedulesModalTitle,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -411,7 +488,7 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
             controller: _titleController,
             style: TextStyle(color: colors.text),
             decoration: InputDecoration(
-              labelText: 'Session Title',
+              labelText: strings.schedulesRoutineName,
               labelStyle: TextStyle(color: colors.textSecondary),
               filled: true,
               fillColor: colors.background,
@@ -450,7 +527,7 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Start Time',
+                              strings.schedulesStartTime,
                               style: TextStyle(color: colors.textSecondary, fontSize: 11),
                             ),
                             const SizedBox(height: 2),
@@ -483,7 +560,7 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Duration',
+                        strings.schedulesDuration,
                         style: TextStyle(color: colors.textSecondary, fontSize: 11),
                       ),
                       const SizedBox(height: 2),
@@ -497,13 +574,13 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 15, child: Text('15 min')),
-                          DropdownMenuItem(value: 25, child: Text('25 min')),
-                          DropdownMenuItem(value: 45, child: Text('45 min')),
-                          DropdownMenuItem(value: 60, child: Text('60 min')),
-                          DropdownMenuItem(value: 90, child: Text('90 min')),
-                          DropdownMenuItem(value: 120, child: Text('120 min')),
+                        items: [
+                          DropdownMenuItem(value: 15, child: Text(strings.schedulesMinutes(15))),
+                          DropdownMenuItem(value: 25, child: Text(strings.schedulesMinutes(25))),
+                          DropdownMenuItem(value: 45, child: Text(strings.schedulesMinutes(45))),
+                          DropdownMenuItem(value: 60, child: Text(strings.schedulesMinutes(60))),
+                          DropdownMenuItem(value: 90, child: Text(strings.schedulesMinutes(90))),
+                          DropdownMenuItem(value: 120, child: Text(strings.schedulesMinutes(120))),
                         ],
                         onChanged: (val) {
                           if (val != null) setState(() => _selectedDuration = val);
@@ -517,7 +594,7 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Repeat Days',
+            strings.schedulesActiveDays,
             style: TextStyle(color: colors.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 8),
@@ -562,9 +639,9 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: _save,
-              child: const Text(
-                'Save Schedule',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              child: Text(
+                strings.schedulesSave,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ),
           ),
