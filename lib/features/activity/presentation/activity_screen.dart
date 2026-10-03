@@ -279,13 +279,13 @@ class ActivityScreen extends ConsumerWidget {
           value: weeklyFormatted,
           subtext: 'Across last 7 days',
           icon: Icons.stacked_bar_chart,
-          color: const Color(0xFFF59E0B),
+          color: kTimerStandbyButtonColor,
           colors: colors,
         ),
         _MetricCard(
           title: 'Daily Average',
           value: '${weeklyAvgHours.toStringAsFixed(1)}h',
-          subtext: 'Goal: 3.0h / day',
+          subtext: '7-day daily average',
           icon: Icons.insights_rounded,
           color: const Color(0xFF06B6D4),
           colors: colors,
@@ -814,7 +814,7 @@ class _SessionTile extends StatelessWidget {
                 style: TextStyle(
                   color: session.strikes == 0
                       ? colors.accent
-                      : Colors.orangeAccent,
+                      : const Color(0xFFEF4444),
                   fontWeight: FontWeight.w600,
                   fontSize: 11,
                 ),

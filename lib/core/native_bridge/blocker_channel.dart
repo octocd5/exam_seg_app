@@ -31,8 +31,14 @@ class BlockerChannel {
     return granted ?? false;
   }
 
-  static Future<void> startLock() async {
-    await _channel.invokeMethod('startLock');
+  static Future<void> startLock({
+    List<String> packages = const [],
+    bool isPhoneWideBan = false,
+  }) async {
+    await _channel.invokeMethod('startLock', {
+      'packages': packages,
+      'isPhoneWideBan': isPhoneWideBan,
+    });
   }
 
   static Future<void> stopLock() async {

@@ -47,7 +47,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             color: granted ? kTimerStandbyButtonTextColor : Colors.white,
           ),
         ),
-        backgroundColor: granted ? kTimerStandbyButtonColor : Colors.orange[800],
+        backgroundColor:
+            granted ? kTimerStandbyButtonColor : const Color(0xFF383633),
       ),
     );
   }
@@ -137,7 +138,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: (_permissionsActive == true
                             ? colors.accent
-                            : Colors.orange)
+                            : colors.textSecondary)
                         .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -147,17 +148,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         : Icons.shield_outlined,
                     color: _permissionsActive == true
                         ? colors.accent
-                        : Colors.orange,
+                        : colors.textSecondary,
                   ),
                 ),
                 title: Text(
-                  'Lock Screen Permissions',
+                  'Blocker Permissions',
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   _permissionsActive == true
-                      ? 'System overlay & lock permissions active'
-                      : 'Permissions required for full lockdown',
+                      ? 'System overlay & usage access permissions active'
+                      : 'Overlay & usage access required for app blocking',
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 12,
@@ -180,11 +181,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 activeThumbColor: colors.accent,
                 activeTrackColor: colors.accent.withValues(alpha: 0.4),
                 title: Text(
-                  'Strict Lock Mode',
+                  'Distraction Overlay Blocker',
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  'Block home button and app switcher during active sessions',
+                  'Display blocking overlay over restricted apps instead of screen pinning',
                   style: TextStyle(color: colors.textSecondary, fontSize: 12),
                 ),
                 value: _strictLockMode,

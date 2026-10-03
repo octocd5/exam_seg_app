@@ -181,5 +181,34 @@ void main() {
 
       expect(find.text('Daily Activity Breakdown'), findsOneWidget);
     });
+
+    testWidgets('ActivityScreen starts completely empty on first boot without placeholder info',
+        (WidgetTester tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: ActivityScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Controller should have zero sessions
+      final state = container.read(activityControllerProvider);
+      expect(state.sessions, isEmpty);
+
+      // Should show empty state message
+      expect(find.textContaining('No activity recorded yet'), findsOneWidget);
+
+      // Should not contain any legacy seed/placeholder session titles
+      expect(find.text('Deep Exam Revision'), findsNothing);
+      expect(find.text('Problem Solving & Math'), findsNothing);
+      expect(find.text('Literature Reading Block'), findsNothing);
+      expect(find.text('Biology Concept Mapping'), findsNothing);
+    });
   });
 }

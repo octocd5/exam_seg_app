@@ -51,6 +51,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
   bool _isLoadingApps = true;
   String _selectedFilter = 'All'; // 'All', 'User Apps', 'Selected'
   String _searchQuery = '';
+  late bool _isPhoneWideBan;
 
   @override
   void initState() {
@@ -61,6 +62,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
     _searchController = TextEditingController();
     _customAppController = TextEditingController();
     _selectedApps = Set<String>.from(widget.existingList?.appNames ?? []);
+    _isPhoneWideBan = widget.existingList?.isPhoneWideBan ?? false;
 
     _loadDeviceApps();
   }
@@ -157,7 +159,7 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a name for the list'),
-          backgroundColor: Colors.orange,
+          backgroundColor: Color(0xFF383633),
         ),
       );
       return;
@@ -170,12 +172,14 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
       final updated = widget.existingList!.copyWith(
         name: name,
         appNames: _selectedApps.toList(),
+        isPhoneWideBan: _isPhoneWideBan,
       );
       controller.updateList(updated, isTimerActive: widget.isTimerActive);
     } else {
       controller.createList(
         name: name,
         appNames: _selectedApps.toList(),
+        isPhoneWideBan: _isPhoneWideBan,
         isTimerActive: widget.isTimerActive,
       );
     }
@@ -303,12 +307,170 @@ class _CreateOrEditListSheetState extends ConsumerState<CreateOrEditListSheet> {
             ),
             const SizedBox(height: 16),
 
+            // Blocking Rule / Mode Selector
+            Text(
+              'BLOCKING RULE',
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.1,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: colors.background,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: widget.isTimerActive
+                          ? null
+                          : () => setState(() => _isPhoneWideBan = false),
+                      borderRadius: BorderRadius.circular(12),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: !_isPhoneWideBan
+                              ? colors.cardBackground
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: !_isPhoneWideBan
+                              ? Border.all(
+                                  color: colors.accent.withValues(alpha: 0.6),
+                                  width: 1.2,
+                                )
+                              : null,
+                          boxShadow: !_isPhoneWideBan
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.block_rounded,
+                                  size: 15,
+                                  color: !_isPhoneWideBan ? colors.accent : colors.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Block Selected',
+                                  style: TextStyle(
+                                    color: !_isPhoneWideBan ? colors.text : colors.textSecondary,
+                                    fontWeight: !_isPhoneWideBan ? FontWeight.bold : FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Only listed apps are blocked',
+                              style: TextStyle(
+                                color: colors.textMuted,
+                                fontSize: 10,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: InkWell(
+                      onTap: widget.isTimerActive
+                          ? null
+                          : () => setState(() => _isPhoneWideBan = true),
+                      borderRadius: BorderRadius.circular(12),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: _isPhoneWideBan
+                              ? colors.cardBackground
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: _isPhoneWideBan
+                              ? Border.all(
+                                  color: colors.accent.withValues(alpha: 0.6),
+                                  width: 1.2,
+                                )
+                              : null,
+                          boxShadow: _isPhoneWideBan
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.phonelink_lock_rounded,
+                                  size: 15,
+                                  color: _isPhoneWideBan ? colors.accent : colors.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Phone-Wide Ban',
+                                  style: TextStyle(
+                                    color: _isPhoneWideBan ? colors.text : colors.textSecondary,
+                                    fontWeight: _isPhoneWideBan ? FontWeight.bold : FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'All apps blocked except these',
+                              style: TextStyle(
+                                color: colors.textMuted,
+                                fontSize: 10,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Apps selection heading & Select All / Clear
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'INSTALLED APPS (${_selectedApps.length} selected)',
+                  _isPhoneWideBan
+                      ? 'EXCLUDED / ALLOWED APPS (${_selectedApps.length} selected)'
+                      : 'APPS TO BLOCK (${_selectedApps.length} selected)',
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 11,

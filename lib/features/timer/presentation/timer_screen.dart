@@ -103,7 +103,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
         ),
         backgroundColor: granted
             ? kTimerStandbyButtonColor
-            : Colors.orange[800],
+            : const Color(0xFF383633),
       ),
     );
   }
@@ -138,11 +138,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     final Color currentBackgroundColor = colors.background;
     final Color currentTextColor = colors.text;
 
-    final Color accentColor = switch (timerState.status) {
-      TimerStatus.running => colors.accent,
-      TimerStatus.verifying => const Color(0xFFF59E0B),
-      _ => colors.accent,
-    };
+    final Color accentColor = colors.accent;
 
     // Retrieve today's total focus time from the activity controller
     final activityState = ref.watch(activityControllerProvider);

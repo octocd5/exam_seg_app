@@ -4,6 +4,7 @@ class AppBlockList {
   final List<String> appNames;
   final DateTime createdAt;
   final bool isDefault;
+  final bool isPhoneWideBan;
 
   const AppBlockList({
     required this.id,
@@ -11,19 +12,33 @@ class AppBlockList {
     required this.appNames,
     required this.createdAt,
     this.isDefault = false,
+    this.isPhoneWideBan = false,
   });
 
   int get appCount => appNames.length;
 
   String get blockedSummary {
-    if (appNames.isEmpty) {
-      return 'No apps blocked';
-    } else if (appNames.length == 1) {
-      return '1 app blocked';
+    if (isPhoneWideBan) {
+      if (appNames.isEmpty) {
+        return 'Phone-wide ban (all apps blocked)';
+      } else if (appNames.length == 1) {
+        return 'Phone-wide ban • 1 app allowed';
+      } else {
+        return 'Phone-wide ban • ${appNames.length} apps allowed';
+      }
     } else {
-      return '${appNames.length} apps blocked';
+      if (appNames.isEmpty) {
+        return 'No apps blocked';
+      } else if (appNames.length == 1) {
+        return '1 app blocked';
+      } else {
+        return '${appNames.length} apps blocked';
+      }
     }
   }
+
+  String get modeTitle =>
+      isPhoneWideBan ? 'Phone-Wide Ban' : 'Blocklist';
 
   AppBlockList copyWith({
     String? id,
@@ -31,6 +46,7 @@ class AppBlockList {
     List<String>? appNames,
     DateTime? createdAt,
     bool? isDefault,
+    bool? isPhoneWideBan,
   }) {
     return AppBlockList(
       id: id ?? this.id,
@@ -38,6 +54,7 @@ class AppBlockList {
       appNames: appNames ?? this.appNames,
       createdAt: createdAt ?? this.createdAt,
       isDefault: isDefault ?? this.isDefault,
+      isPhoneWideBan: isPhoneWideBan ?? this.isPhoneWideBan,
     );
   }
 
@@ -47,6 +64,7 @@ class AppBlockList {
         'appNames': appNames,
         'createdAt': createdAt.toIso8601String(),
         'isDefault': isDefault,
+        'isPhoneWideBan': isPhoneWideBan,
       };
 
   factory AppBlockList.fromJson(Map<String, dynamic> json) {
@@ -61,6 +79,7 @@ class AppBlockList {
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       isDefault: json['isDefault'] as bool? ?? false,
+      isPhoneWideBan: json['isPhoneWideBan'] as bool? ?? false,
     );
   }
 }

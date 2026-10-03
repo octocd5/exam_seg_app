@@ -134,6 +134,7 @@ class ListsController extends StateNotifier<ListsState> {
   bool createList({
     required String name,
     required List<String> appNames,
+    bool isPhoneWideBan = false,
     required bool isTimerActive,
   }) {
     if (isTimerActive) {
@@ -157,6 +158,7 @@ class ListsController extends StateNotifier<ListsState> {
       appNames: List.unmodifiable(appNames.toSet().toList()),
       createdAt: DateTime.now(),
       isDefault: false,
+      isPhoneWideBan: isPhoneWideBan,
     );
 
     final updated = [...state.lists, newList];

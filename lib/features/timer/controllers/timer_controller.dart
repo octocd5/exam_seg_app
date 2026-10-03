@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/verifiable_objects.dart';
 import '../../../core/native_bridge/blocker_channel.dart';
 import '../../activity/controllers/activity_controller.dart';
+import '../../lists/controllers/lists_controller.dart';
 
 enum TimerStatus {
   idle,
@@ -86,9 +87,16 @@ class TimerController extends StateNotifier<TimerState> {
   Future<void> startTimer() async {
     if (state.status == TimerStatus.running) return;
 
-    // Trigger native blocker / screen lock
+    // Trigger native blocker overlay service
+    final activeList = _ref?.read(listsControllerProvider).activeList;
+    final blockedApps = activeList?.appNames ?? const [];
+    final isPhoneWideBan = activeList?.isPhoneWideBan ?? false;
+
     try {
-      await BlockerChannel.startLock();
+      await BlockerChannel.startLock(
+        packages: blockedApps,
+        isPhoneWideBan: isPhoneWideBan,
+      );
     } catch (_) {
       // Ignored if platform doesn't support or in debug mode
     }
@@ -164,6 +172,9 @@ class TimerController extends StateNotifier<TimerState> {
 
   void reset() {
     _ticker?.cancel();
+    try {
+      BlockerChannel.stopLock();
+    } catch (_) {}
     state = const TimerState();
   }
 

@@ -161,24 +161,24 @@ class ManageListsSheet extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.12),
+                  color: colors.accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: Colors.orange.withValues(alpha: 0.4),
+                    color: colors.accent.withValues(alpha: 0.4),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.lock_rounded, color: Colors.orange, size: 24),
+                    Icon(Icons.lock_rounded, color: colors.accent, size: 24),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'LOCKED DURING SESSION',
                             style: TextStyle(
-                              color: Colors.orange,
+                              color: colors.accent,
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                               letterSpacing: 0.8,
@@ -376,13 +376,42 @@ class ManageListsSheet extends ConsumerWidget {
                               ],
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            list.blockedSummary,
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 12,
-                            ),
+                          const SizedBox(height: 3),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                list.blockedSummary,
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.accent.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(5),
+                                  border: Border.all(
+                                    color: colors.accent.withValues(alpha: 0.35),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  list.isPhoneWideBan ? 'Phone-Wide Ban' : 'Blocklist',
+                                  style: TextStyle(
+                                    color: colors.accent,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

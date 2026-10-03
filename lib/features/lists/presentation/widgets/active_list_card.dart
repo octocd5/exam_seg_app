@@ -82,7 +82,9 @@ class ActiveListCard extends ConsumerWidget {
                     isTimerActive
                         ? Icons.lock_outline_rounded
                         : (hasLists
-                            ? Icons.layers_outlined
+                            ? (activeList.isPhoneWideBan
+                                ? Icons.phonelink_lock_rounded
+                                : Icons.layers_outlined)
                             : Icons.playlist_add_rounded),
                     color: colors.accent,
                     size: 22,
@@ -110,6 +112,32 @@ class ActiveListCard extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (hasLists && activeList.isPhoneWideBan) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.accent.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: colors.accent.withValues(alpha: 0.4),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Text(
+                                'Phone-Wide Ban',
+                                style: TextStyle(
+                                  color: colors.accent,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                          ],
                           if (isTimerActive) ...[
                             const SizedBox(width: 6),
                             Icon(

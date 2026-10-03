@@ -180,10 +180,11 @@ class _CameraVerificationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: kTimerStandbyBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: kTimerStandbyBackgroundColor,
         elevation: 0,
+        iconTheme: const IconThemeData(color: kTimerStandbyTextColor),
       ),
       body: SafeArea(
         child: Column(
@@ -210,45 +211,52 @@ class _CameraVerificationScreenState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+      decoration: const BoxDecoration(
+        color: Color(0xFF282724),
         border: Border(
           bottom: BorderSide(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+            color: Color(0xFF383633),
             width: 1.5,
           ),
         ),
       ),
       child: Column(
         children: [
-          const Text(
+          Text(
             'To unlock your phone and stop the timer:',
-            style: TextStyle(fontSize: 13, color: Colors.white70),
+            style: TextStyle(
+              fontSize: 13,
+              color: kTimerStandbyTextColor.withValues(alpha: 0.65),
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Take a picture of: ',
-                  style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500)),
+              const Text(
+                'Take a picture of: ',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: kTimerStandbyTextColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                  color: kTimerStandbyButtonColor.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: const Color(0xFFF59E0B),
+                    color: kTimerStandbyButtonColor.withValues(alpha: 0.5),
+                    width: 1.2,
                   ),
                 ),
                 child: Text(
                   widget.targetObject,
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFFBBF24),
+                    color: kTimerStandbyButtonColor,
                   ),
                 ),
               ),
@@ -266,24 +274,37 @@ class _CameraVerificationScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.warning_amber_rounded,
-                size: 56, color: Colors.amber),
+            const Icon(
+              Icons.warning_rounded,
+              size: 56,
+              color: kTimerStandbyButtonColor,
+            ),
             const SizedBox(height: 16),
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: const TextStyle(color: kTimerStandbyTextColor, fontSize: 15),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: openAppSettings,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kTimerStandbyButtonColor,
+                foregroundColor: kTimerStandbyButtonTextColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: const Text('Open App Settings'),
             ),
             const SizedBox(height: 16),
             TextButton.icon(
               onPressed: _simulateVerification,
-              icon: const Icon(Icons.bug_report),
-              label: const Text('Simulate Scan (Testing)'),
+              icon: const Icon(Icons.bug_report, color: kTimerStandbyButtonColor),
+              label: const Text(
+                'Simulate Scan (Testing)',
+                style: TextStyle(color: kTimerStandbyButtonColor),
+              ),
             ),
           ],
         ),
@@ -312,7 +333,7 @@ class _CameraVerificationScreenState
                 height: 220,
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.7),
+                    color: kTimerStandbyButtonColor.withValues(alpha: 0.75),
                     width: 2.5,
                   ),
                   borderRadius: BorderRadius.circular(16),
@@ -327,17 +348,17 @@ class _CameraVerificationScreenState
 
   Widget _buildProcessingOverlay() {
     return Container(
-      color: Colors.black54,
+      color: kTimerStandbyBackgroundColor.withValues(alpha: 0.75),
       child: const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Color(0xFFF59E0B)),
+            CircularProgressIndicator(color: kTimerStandbyButtonColor),
             SizedBox(height: 16),
             Text(
               'Analyzing with ML Kit...',
               style: TextStyle(
-                color: Colors.white,
+                color: kTimerStandbyTextColor,
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
               ),
@@ -350,7 +371,7 @@ class _CameraVerificationScreenState
 
   Widget _buildSuccessOverlay() {
     return Container(
-      color: Colors.black87,
+      color: kTimerStandbyBackgroundColor.withValues(alpha: 0.90),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -364,7 +385,7 @@ class _CameraVerificationScreenState
             Text(
               'Verified: ${_lastResult?.matchedLabel ?? widget.targetObject}!',
               style: const TextStyle(
-                color: Colors.white,
+                color: kTimerStandbyTextColor,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
@@ -373,13 +394,19 @@ class _CameraVerificationScreenState
               const SizedBox(height: 6),
               Text(
                 'Confidence: ${((_lastResult!.confidence!) * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(color: kTimerStandbyButtonColor, fontSize: 16),
+                style: const TextStyle(
+                  color: kTimerStandbyButtonColor,
+                  fontSize: 16,
+                ),
               ),
             ],
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Focus Lock Released 🎉',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(
+                color: kTimerStandbyTextColor.withValues(alpha: 0.70),
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -390,7 +417,15 @@ class _CameraVerificationScreenState
   Widget _buildBottomControls() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      color: const Color(0xFF0F172A),
+      decoration: const BoxDecoration(
+        color: Color(0xFF282724),
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFF383633),
+            width: 1.0,
+          ),
+        ),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -416,8 +451,8 @@ class _CameraVerificationScreenState
                   if (_lastResult!.detectedLabels.isNotEmpty)
                     Text(
                       'AI recognized: ${_lastResult!.detectedLabels.take(3).join(', ')}',
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: kTimerStandbyTextColor.withValues(alpha: 0.7),
                         fontSize: 12,
                       ),
                       textAlign: TextAlign.center,
@@ -430,7 +465,10 @@ class _CameraVerificationScreenState
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: kTimerStandbyTextColor.withValues(alpha: 0.75),
+                ),
                 tooltip: 'Back to Timer',
                 onPressed: () => Navigator.of(context).pop(),
               ),
@@ -441,20 +479,22 @@ class _CameraVerificationScreenState
                   height: 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                    color: const Color(0xFFF59E0B),
+                    border: Border.all(color: kTimerStandbyTextColor, width: 3.5),
+                    color: kTimerStandbyButtonColor,
                   ),
                   child: const Icon(
                     Icons.camera_alt,
                     size: 34,
-                    color: Colors.black,
+                    color: kTimerStandbyButtonTextColor,
                   ),
                 ),
               ),
               // Simulator test button in case camera has issues
               IconButton(
-                icon: const Icon(Icons.check_circle_outline,
-                    color: Colors.white38),
+                icon: Icon(
+                  Icons.check_circle_outline,
+                  color: kTimerStandbyTextColor.withValues(alpha: 0.40),
+                ),
                 tooltip: 'Simulate Valid Scan (Testing)',
                 onPressed: _simulateVerification,
               ),

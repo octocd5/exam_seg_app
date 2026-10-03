@@ -25,7 +25,7 @@ class ActivityState {
 }
 
 class ActivityController extends StateNotifier<ActivityState> {
-  static const String _storageKey = 'saved_activity_sessions_v1';
+  static const String _storageKey = 'saved_activity_sessions_v2';
   static const Uuid _uuid = Uuid();
 
   ActivityController() : super(const ActivityState(isLoading: true)) {
@@ -35,27 +35,28 @@ class ActivityController extends StateNotifier<ActivityState> {
   Future<void> loadSessions() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Clear legacy storage key containing seed/placeholder data
+      await prefs.remove('saved_activity_sessions_v1');
+
       final jsonString = prefs.getString(_storageKey);
 
       if (jsonString != null && jsonString.isNotEmpty) {
         final List<dynamic> decoded = jsonDecode(jsonString) as List<dynamic>;
         final loaded = decoded
             .map((e) => ActivitySession.fromJson(e as Map<String, dynamic>))
+            .where((s) => !s.id.startsWith('seed-'))
             .toList();
 
         // Sort descending by start time
         loaded.sort((a, b) => b.startTime.compareTo(a.startTime));
         state = state.copyWith(sessions: loaded, isLoading: false);
       } else {
-        // First run: provide realistic past days demonstration data
-        final seedSessions = _generateSeedData();
-        state = state.copyWith(sessions: seedSessions, isLoading: false);
-        await _saveSessionsToPrefs(seedSessions);
+        // First boot: completely clean with 0 placeholder sessions
+        state = state.copyWith(sessions: const [], isLoading: false);
       }
     } catch (_) {
-      // In case of error (e.g. test environment without storage), fallback to seed data
-      final seed = _generateSeedData();
-      state = state.copyWith(sessions: seed, isLoading: false);
+      state = state.copyWith(sessions: const [], isLoading: false);
     }
   }
 
@@ -87,10 +88,11 @@ class ActivityController extends StateNotifier<ActivityState> {
   }
 
   Future<void> clearAllSessions() async {
-    state = state.copyWith(sessions: []);
+    state = state.copyWith(sessions: const []);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_storageKey);
+      await prefs.remove('saved_activity_sessions_v1');
     } catch (_) {}
   }
 
@@ -111,91 +113,6 @@ class ActivityController extends StateNotifier<ActivityState> {
       return 'Quick Focus Sprint';
     }
   }
-
-  static List<ActivitySession> _generateSeedData() {
-    final now = DateTime.now();
-
-    // Helper for days ago
-    DateTime daysAgo(int days, int hour, int minute) {
-      final d = now.subtract(Duration(days: days));
-      return DateTime(d.year, d.month, d.day, hour, minute);
-    }
-
-    return [
-      // Yesterday (1 day ago)
-      ActivitySession(
-        id: 'seed-1',
-        title: 'Deep Exam Revision',
-        startTime: daysAgo(1, 14, 30),
-        endTime: daysAgo(1, 15, 25),
-        durationSeconds: 3300, // 55 mins
-        targetObject: 'Laptop',
-        strikes: 0,
-      ),
-      ActivitySession(
-        id: 'seed-2',
-        title: 'Problem Solving & Math',
-        startTime: daysAgo(1, 10, 0),
-        endTime: daysAgo(1, 10, 45),
-        durationSeconds: 2700, // 45 mins
-        targetObject: 'Coffee cup',
-        strikes: 1,
-      ),
-
-      // 2 days ago
-      ActivitySession(
-        id: 'seed-3',
-        title: 'Literature Reading Block',
-        startTime: daysAgo(2, 16, 0),
-        endTime: daysAgo(2, 17, 10),
-        durationSeconds: 4200, // 1h 10m
-        targetObject: 'Shoe',
-        strikes: 0,
-      ),
-      ActivitySession(
-        id: 'seed-4',
-        title: 'Formula & Memorization',
-        startTime: daysAgo(2, 9, 15),
-        endTime: daysAgo(2, 9, 50),
-        durationSeconds: 2100, // 35 mins
-        targetObject: 'Clock',
-        strikes: 0,
-      ),
-
-      // 3 days ago
-      ActivitySession(
-        id: 'seed-5',
-        title: 'Core Programming Practice',
-        startTime: daysAgo(3, 13, 0),
-        endTime: daysAgo(3, 14, 30),
-        durationSeconds: 5400, // 1h 30m
-        targetObject: 'Computer keyboard',
-        strikes: 0,
-      ),
-
-      // 4 days ago
-      ActivitySession(
-        id: 'seed-6',
-        title: 'Biology Concept Mapping',
-        startTime: daysAgo(4, 11, 0),
-        endTime: daysAgo(4, 11, 45),
-        durationSeconds: 2700, // 45 mins
-        targetObject: 'Laptop',
-        strikes: 0,
-      ),
-
-      // 5 days ago
-      ActivitySession(
-        id: 'seed-7',
-        title: 'History Essay Outline',
-        startTime: daysAgo(5, 15, 30),
-        endTime: daysAgo(5, 16, 20),
-        durationSeconds: 3000, // 50 mins
-        targetObject: 'Bottle',
-        strikes: 0,
-      ),
-    ];
-  }
 }
 
 final activityControllerProvider =
@@ -214,6 +131,10 @@ List<DailyActivityGroup> groupSessionsByDay({
   }
   allSessions.addAll(sessions);
 
+  if (allSessions.isEmpty) {
+    return const [];
+  }
+
   // Group by date (normalized to year, month, day)
   final Map<String, List<ActivitySession>> groupedMap = {};
   final Map<String, DateTime> normalizedDates = {};
@@ -226,14 +147,6 @@ List<DailyActivityGroup> groupSessionsByDay({
       normalizedDates[dateKey] = DateTime(d.year, d.month, d.day);
     }
     groupedMap[dateKey]!.add(session);
-  }
-
-  // Ensure "Today" exists even if 0 sessions yet so the user sees today's slot
-  final now = DateTime.now();
-  final todayKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-  if (!groupedMap.containsKey(todayKey)) {
-    groupedMap[todayKey] = [];
-    normalizedDates[todayKey] = DateTime(now.year, now.month, now.day);
   }
 
   // Convert to DailyActivityGroup list

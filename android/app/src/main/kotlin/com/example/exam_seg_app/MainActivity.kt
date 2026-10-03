@@ -1,5 +1,6 @@
 package com.example.exam_seg_app
 
+import android.app.AppOpsManager
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -8,6 +9,7 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Build
+import android.os.Process
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -16,7 +18,17 @@ import java.io.ByteArrayOutputStream
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.exam_seg_app/blocker"
-    private var isLocked = false
+
+    private fun hasUsageStatsPermission(): Boolean {
+        val appOps = getSystemService(APP_OPS_SERVICE) as? AppOpsManager ?: return false
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+        }
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -29,6 +41,7 @@ class MainActivity : FlutterActivity() {
                     } else {
                         true
                     }
+                    val hasUsage = hasUsageStatsPermission()
 
                     if (!canDraw && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         val intent = Intent(
@@ -37,23 +50,39 @@ class MainActivity : FlutterActivity() {
                         )
                         startActivity(intent)
                         result.success(false)
+                    } else if (!hasUsage) {
+                        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                        startActivity(intent)
+                        result.success(false)
                     } else {
                         result.success(true)
                     }
                 }
                 "startLock" -> {
-                    isLocked = true
+                    val packages = call.argument<List<String>>("packages") ?: emptyList()
+                    val isPhoneWideBan = call.argument<Boolean>("isPhoneWideBan") ?: false
+
+                    val serviceIntent = Intent(this, FocusOverlayService::class.java).apply {
+                        putStringArrayListExtra("packages", ArrayList(packages))
+                        putExtra("isPhoneWideBan", isPhoneWideBan)
+                    }
                     try {
-                        startLockTask()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(serviceIntent)
+                        } else {
+                            startService(serviceIntent)
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
                     result.success(null)
                 }
                 "stopLock" -> {
-                    isLocked = false
+                    val serviceIntent = Intent(this, FocusOverlayService::class.java).apply {
+                        action = FocusOverlayService.ACTION_STOP
+                    }
                     try {
-                        stopLockTask()
+                        stopService(serviceIntent)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -130,16 +159,6 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
-        }
-    }
-
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        if (isLocked) {
-            val intent = Intent(this, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            }
-            startActivity(intent)
         }
     }
 }

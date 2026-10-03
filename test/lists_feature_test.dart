@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:exam_seg_app/features/lists/controllers/lists_controller.dart';
+import 'package:exam_seg_app/features/lists/models/app_block_list.dart';
 import 'package:exam_seg_app/features/lists/presentation/widgets/active_list_card.dart';
 import 'package:exam_seg_app/features/lists/presentation/manage_lists_sheet.dart';
 import 'package:exam_seg_app/features/lists/presentation/create_or_edit_list_sheet.dart';
@@ -357,5 +358,127 @@ void main() {
       container.read(timerControllerProvider.notifier).reset();
       await tester.pump();
     });
+
+    testWidgets('ActiveListCard renders Phone-Wide Ban badge and summary',
+        (WidgetTester tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      container.read(listsControllerProvider.notifier).createList(
+            name: 'Study Allowlist',
+            appNames: ['Google Docs', 'Dictionary'],
+            isPhoneWideBan: true,
+            isTimerActive: false,
+          );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: TimerScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('Study Allowlist'), findsOneWidget);
+      expect(find.text('Phone-Wide Ban'), findsOneWidget);
+      expect(find.text('Phone-wide ban • 2 apps allowed'), findsOneWidget);
+    });
+
+    testWidgets('TimerScreen passes list packages and isPhoneWideBan to BlockerChannel',
+        (WidgetTester tester) async {
+      final recordedCalls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.example.exam_seg_app/blocker'),
+        (MethodCall call) async {
+          recordedCalls.add(call);
+          return true;
+        },
+      );
+
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      container.read(listsControllerProvider.notifier).createList(
+            name: 'Allowed Apps Only',
+            appNames: ['Calculator', 'Calendar'],
+            isPhoneWideBan: true,
+            isTimerActive: false,
+          );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: TimerScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Tap start chronometer
+      await tester.tap(find.text('Start Chronometer'));
+      await tester.pump();
+
+      final startLockCall =
+          recordedCalls.firstWhere((c) => c.method == 'startLock');
+      expect(startLockCall.arguments['isPhoneWideBan'], true);
+      expect(startLockCall.arguments['packages'], ['Calculator', 'Calendar']);
+
+      container.read(timerControllerProvider.notifier).reset();
+      await tester.pump();
+    });
+  });
+
+  group('AppBlockList Model Tests', () {
+    test('supports standard blocklist mode', () {
+      final list = AppBlockList(
+        id: 'list-1',
+        name: 'Blocklist Test',
+        appNames: ['Instagram', 'TikTok'],
+        createdAt: DateTime.now(),
+        isPhoneWideBan: false,
+      );
+
+      expect(list.isPhoneWideBan, false);
+      expect(list.modeTitle, 'Blocklist');
+      expect(list.blockedSummary, '2 apps blocked');
+    });
+
+    test('supports phone-wide ban mode (excluding listed apps)', () {
+      final list = AppBlockList(
+        id: 'list-2',
+        name: 'Phone-Wide Focus',
+        appNames: ['Slack', 'Calculator'],
+        createdAt: DateTime.now(),
+        isPhoneWideBan: true,
+      );
+
+      expect(list.isPhoneWideBan, true);
+      expect(list.modeTitle, 'Phone-Wide Ban');
+      expect(list.blockedSummary, 'Phone-wide ban • 2 apps allowed');
+    });
+
+    test('toJson and fromJson preserves isPhoneWideBan correctly', () {
+      final original = AppBlockList(
+        id: 'list-3',
+        name: 'Exclude Ban',
+        appNames: ['Notes'],
+        createdAt: DateTime.now(),
+        isPhoneWideBan: true,
+      );
+
+      final json = original.toJson();
+      expect(json['isPhoneWideBan'], true);
+
+      final reconstituted = AppBlockList.fromJson(json);
+      expect(reconstituted.isPhoneWideBan, true);
+      expect(reconstituted.name, 'Exclude Ban');
+      expect(reconstituted.appNames, ['Notes']);
+    });
   });
 }
+

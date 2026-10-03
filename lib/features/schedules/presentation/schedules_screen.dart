@@ -323,10 +323,9 @@ class _AddScheduleModalState extends State<_AddScheduleModal> {
       context: context,
       initialTime: _selectedTime,
       builder: (context, child) {
+        final currentTheme = Theme.of(context);
         return Theme(
-          data: ThemeData(
-            useMaterial3: true,
-            brightness: colors.isTimerActive ? Brightness.light : Brightness.dark,
+          data: currentTheme.copyWith(
             colorScheme: ColorScheme.fromSeed(
               seedColor: colors.accent,
               brightness: colors.isTimerActive ? Brightness.light : Brightness.dark,
