@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Exam Seg App</string>
+	<string>Bubble</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,6 +24,37 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.example.examSegApp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>bubble</string>
+			</array>
+		</dict>
+	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.example.examSegApp.exitShortcut</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Exit Bubble</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Detects and immediately exits the app</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeProhibit</string>
+			<key>UIApplicationShortcutItemUserInfo</key>
+			<dict>
+				<key>action</key>
+				<string>immediate_exit</string>
+			</dict>
+		</dict>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>

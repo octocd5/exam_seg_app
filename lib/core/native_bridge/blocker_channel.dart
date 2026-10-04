@@ -45,6 +45,23 @@ class BlockerChannel {
     await _channel.invokeMethod('stopLock');
   }
 
+  static Future<bool> createExitShortcut() async {
+    try {
+      final success = await _channel.invokeMethod<bool>('createShortcut');
+      return success ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> exitApp() async {
+    try {
+      await _channel.invokeMethod('exitApp');
+    } catch (_) {
+      SystemNavigator.pop();
+    }
+  }
+
   static Future<List<InstalledApp>> getInstalledApps() async {
     try {
       final List<dynamic>? result =

@@ -182,6 +182,13 @@ abstract class AppStrings {
   String get settingsGrant;
   String get settingsDistractionOverlay;
   String get settingsDistractionOverlaySubtitle;
+  String get settingsIosShortcutTitle;
+  String get settingsIosShortcutSubtitle;
+  String get settingsIosShortcutCreate;
+  String get settingsIosShortcutCreated;
+  String get settingsIosShortcutTest;
+  String get settingsIosShortcutGuideTitle;
+  String get settingsIosShortcutGuideContent;
   String get settingsCameraSection;
   String get settingsRecognizableObjects;
   String settingsItemsConfiguredSubtitle(int count);
@@ -604,6 +611,23 @@ class EnAppStrings implements AppStrings {
   @override
   String get settingsDistractionOverlaySubtitle =>
       'Display blocking overlay over restricted apps instead of screen pinning';
+  @override
+  String get settingsIosShortcutTitle => 'iOS Exit Shortcut';
+  @override
+  String get settingsIosShortcutSubtitle =>
+      'Creates a shortcut that detects trigger and immediately exits the app';
+  @override
+  String get settingsIosShortcutCreate => 'Create Shortcut';
+  @override
+  String get settingsIosShortcutCreated =>
+      'iOS exit shortcut created successfully';
+  @override
+  String get settingsIosShortcutTest => 'Test Exit';
+  @override
+  String get settingsIosShortcutGuideTitle => 'iOS Distraction Blocker Setup';
+  @override
+  String get settingsIosShortcutGuideContent =>
+      'On iOS, you can use Apple\'s Shortcuts app to block distracting apps:\n\n1. Open the Shortcuts app on your iPhone and tap "Automation".\n2. Tap "+" > "App" and select distracting apps (e.g. social media or games).\n3. Set trigger to "Is Opened" and choose "Run Immediately".\n4. Add an action: "Open URL" with bubble://exit or run the "Exit Bubble" quick action.\n\nWhenever a restricted app is launched, Bubble will detect the trigger and immediately exit to return to the home screen.';
   @override
   String get settingsCameraSection => 'CAMERA & VISION VERIFICATION';
   @override
@@ -1064,6 +1088,24 @@ class EsAppStrings implements AppStrings {
   @override
   String get settingsDistractionOverlaySubtitle =>
       'Mostrar superposición de bloqueo sobre apps restringidas en vez de fijar pantalla';
+  @override
+  String get settingsIosShortcutTitle => 'Atajo de Salida de iOS';
+  @override
+  String get settingsIosShortcutSubtitle =>
+      'Crea un atajo que detecta la activación y sale inmediatamente de la app';
+  @override
+  String get settingsIosShortcutCreate => 'Crear Atajo';
+  @override
+  String get settingsIosShortcutCreated =>
+      'Atajo de salida de iOS creado con éxito';
+  @override
+  String get settingsIosShortcutTest => 'Probar Salida';
+  @override
+  String get settingsIosShortcutGuideTitle =>
+      'Configuración de Bloqueador en iOS';
+  @override
+  String get settingsIosShortcutGuideContent =>
+      'En iOS, puedes usar la app Atajos de Apple para bloquear aplicaciones que te distraigan:\n\n1. Abre la app Atajos en tu iPhone y toca "Automatización".\n2. Toca "+" > "App" y selecciona las aplicaciones distractoras.\n3. Configura la activación como "Se abre" y "Ejecutar inmediatamente".\n4. Añade la acción: "Abrir URL" con bubble://exit o ejecuta el atajo "Exit Bubble".\n\nCada vez que se abra una app restringida, Bubble detectará la activación y saldrá de inmediato para volver a la pantalla de inicio.';
   @override
   String get settingsCameraSection => 'CÁMARA Y VERIFICACIÓN VISUAL';
   @override

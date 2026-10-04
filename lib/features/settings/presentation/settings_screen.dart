@@ -206,6 +206,69 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _showIosShortcutGuide(AppThemeColors colors, AppStrings strings) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: colors.cardBorder),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.apple, color: colors.text, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                strings.settingsIosShortcutGuideTitle,
+                style: TextStyle(
+                  color: colors.text,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          strings.settingsIosShortcutGuideContent,
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 13,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await BlockerChannel.exitApp();
+            },
+            child: Text(
+              strings.settingsIosShortcutTest,
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.accent,
+              foregroundColor: colors.accentText,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(strings.activityGotIt),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final timerState = ref.watch(timerControllerProvider);
@@ -316,6 +379,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 value: _strictLockMode,
                 onChanged: (val) => setState(() => _strictLockMode = val),
+              ),
+              Divider(color: colors.cardBorder, height: 1),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colors.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.touch_app_rounded, color: colors.accent),
+                ),
+                title: Text(
+                  strings.settingsIosShortcutTitle,
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  strings.settingsIosShortcutSubtitle,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                ),
+                trailing: TextButton(
+                  onPressed: () async {
+                    await BlockerChannel.createExitShortcut();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          strings.settingsIosShortcutCreated,
+                          style: const TextStyle(color: kTimerStandbyButtonTextColor),
+                        ),
+                        backgroundColor: kTimerStandbyButtonColor,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    strings.settingsIosShortcutCreate,
+                    style: TextStyle(
+                      color: colors.accent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                onTap: () => _showIosShortcutGuide(colors, strings),
               ),
             ]),
             const SizedBox(height: 24),

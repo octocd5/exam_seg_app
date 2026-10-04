@@ -108,6 +108,13 @@ void main() {
       expect(es.schedulesUntilStopped, 'Hasta detener');
       expect(en.schedulesEndsAt('10:00 AM'), 'Ends at 10:00 AM');
       expect(es.schedulesEndsAt('10:00 AM'), 'Termina a las 10:00 AM');
+
+      expect(en.settingsIosShortcutTitle, 'iOS Exit Shortcut');
+      expect(es.settingsIosShortcutTitle, 'Atajo de Salida de iOS');
+      expect(en.settingsIosShortcutCreate, 'Create Shortcut');
+      expect(es.settingsIosShortcutCreate, 'Crear Atajo');
+      expect(en.settingsIosShortcutTest, 'Test Exit');
+      expect(es.settingsIosShortcutTest, 'Probar Salida');
     });
 
     test('LocaleController changes locale correctly', () {
